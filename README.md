@@ -26,13 +26,12 @@ Uma Dairy - A React and Node.js based platform to manage sales, inventory, and o
 2. Backend dependencies install
     cd backend
     npm install
-3.Backend server run
-  npm start
-4.open new terminal and install frontend dependencies
-  cd ../frontend
+3.Run Backend server with npm start
+4.open new terminal and install frontend dependencies with  cd ../frontend
   npm install
-5.Frontend development server run
-  npm run dev
+  
+5.Run Frontend development server with  npm run dev
+ 
 6. open in browser http://localhost:3000
 Note: ensure that Node.js and npm should already installed.
 
