@@ -28,7 +28,7 @@ const Cart = () => {
 
   if (orderPlaced) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
         <h2 className="text-2xl font-bold text-green-700 mb-4">Congratulations!! your Order has been Placed.</h2>
         <a href="/" className="text-yellow-700 hover:underline">Proceed to Buy</a>
       </div>
@@ -37,7 +37,7 @@ const Cart = () => {
 
   if (cartItems.length === 0)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
         <p className="text-xl font-semibold text-gray-800 mb-3">Cart is empty</p>
         <a href="/" className="text-base text-yellow-700 hover:underline hover:text-yellow-800">
           view products
@@ -46,7 +46,7 @@ const Cart = () => {
     );
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gray-100 p-4">
+    <div className="w-screen h-screen flex flex-col items-center bg-gray-100 p-4">
       <h1 className="text-2xl font-bold mb-6 text-yellow-900">your cart</h1>
       <div className="w-full max-w-3xl space-y-4">
         {cartItems.map((item) => (

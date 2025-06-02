@@ -21,7 +21,7 @@ const Payment = () => {
       };
 
       // Step 1: Create payment link
-      const res = await fetch('http://localhost:5000/api/payment/create-link', {
+      const res = await fetch('https://dairybackend-jxab.onrender.com/api/payment/create-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, customerDetails }),
@@ -37,7 +37,7 @@ const Payment = () => {
           alert('Payment successful!');
 
           // Step 3: Confirm payment backend call
-          await fetch('http://localhost:5000/api/payment/confirm', {
+          await fetch('https://dairybackend-jxab.onrender.com/api/payment/confirm', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orderId: data.orderId, paymentStatus: 'SUCCESS' }),
