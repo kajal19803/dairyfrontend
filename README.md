@@ -17,17 +17,13 @@ Uma Dairy - A React and Node.js based platform to manage sales, inventory, and o
 - Database: MongoDB atlas
 - Deployment: Render
 
-## Installation
+## Installation (Frontend)
 1. Repository clone karein:
 
    ```bash
-   git clone https://github.com/kajal19803/uma-dairy.git
+   git clone https://github.com/kajal19803/uma-dairy-frontend.git
    cd uma-dairy
-2. Backend dependencies install
-    cd backend
-    npm install
-3.Run Backend server with npm start
-4.open new terminal and install frontend dependencies with  cd ../frontend
+2.frontend dependencies with  cd ../frontend
   npm install
   
 5.Run Frontend development server with  npm run dev
