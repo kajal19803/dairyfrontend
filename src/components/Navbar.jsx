@@ -1,103 +1,201 @@
-import { Link } from 'react-router-dom';
-import { useCart } from '../context/CartContext'; // import cart context
+import { useState, useEffect } from "react";
+import { ShoppingCart, MoreHorizontal, X, Search } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 
 const Navbar = () => {
-  const { cartItems } = useCart(); // get cart items
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { cartItems } = useCart();
+  const navigate = useNavigate();
+
+  // Calculate total cart quantity
+  const cartCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    // Check login status on mount
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    navigate("/login");
+    setMenuOpen(false);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter" && searchTerm.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      setSearchTerm("");
+      setShowSearch(false);
+      if (menuOpen) setMenuOpen(false);
+    }
+  };
 
   return (
-    <>
-      <nav className="w-full bg-white border-green-200 dark:bg-green-600">
-        <div className="flex flex-wrap justify-between items-center mx-auto max-w-screen-xl p-4">
-          <a
-            href="https://flowbite.com"
-            className="flex items-center space-x-4 rtl:space-x-reverse"
-          >
-            <img
-              src="https://worldvectorlogo.com/logos/dairy-farm.svg"
-              alt="Dairy Farm Logo"
-              className="h-12"
-            />
+    <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center relative z-50">
+      {/* Left: Logo */}
+      <div className="flex items-center space-x-4">
+        <div className="text-2xl font-bold text-blue-600">
+          <Link to="/" onClick={() => setMenuOpen(false)}>
+            Uma Dairy
+          </Link>
+        </div>
+      </div>
 
-            <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
-              Uma dairy
+      {/* Center: Desktop Search Bar */}
+      <div className="hidden md:flex flex-1 px-6">
+        <input
+          type="text"
+          placeholder="Search..."
+          className="border px-3 py-1 rounded-md w-full bg-gray-100"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+        />
+      </div>
+
+      {/* Right: Cart, Search (mobile), Login/Profile/Logout, Menu toggle */}
+      <div className="flex items-center space-x-4">
+        {/* Mobile Search Icon */}
+        <div className="md:hidden">
+          <button onClick={() => setShowSearch(!showSearch)} aria-label="Toggle search">
+            <Search className="w-5 h-5 text-gray-700" />
+          </button>
+        </div>
+
+        {/* Cart Icon */}
+        <div className="relative">
+          <Link to="/cart" onClick={() => setMenuOpen(false)} aria-label="Cart">
+            <ShoppingCart className="w-5 h-5 text-gray-700" />
+          </Link>
+          {cartCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {cartCount}
             </span>
-          </a>
-          <div className="flex items-center space-x-8 rtl:space-x-reverse">
-            <input
-              type="text"
-              placeholder="Search products..."
-              className="w-full px-4 py-2 border border-gray-100 rounded-l-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-            <button className="bg-gray-600 text-gray px-4 py-2 rounded-r-md hover:bg-white-100">
-              Search
-            </button>
+          )}
+        </div>
 
+        {/* Desktop Auth Links */}
+        <div className="hidden md:flex items-center space-x-4 font-medium text-gray-700">
+          {!isLoggedIn && (
+            <Link to="/login" onClick={() => setMenuOpen(false)}>
+              Login
+            </Link>
+          )}
+          {isLoggedIn && (
+            <>
+              <Link to="/dashboard" onClick={() => setMenuOpen(false)}>
+                Profile
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-white"
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Menu Toggle (3 dots or X) */}
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+          className="ml-4 relative"
+        >
+          {menuOpen ? <X className="w-6 h-6" /> : <MoreHorizontal className="w-6 h-6" />}
+        </button>
+
+        {/* Mobile Dropdown Menu */}
+        {menuOpen && (
+          <div className="absolute top-full right-0 mt-2 w-48 bg-white shadow-md rounded-md z-50 flex flex-col text-gray-700">
             <Link
-              to="/login"
-              className="text-sm text-yellow-600 dark:text-yellow-500 hover:underline"
+              to="/"
+              className="px-4 py-2 hover:bg-gray-100 border-b"
+              onClick={() => setMenuOpen(false)}
             >
-              Login/Register
+              Home
+            </Link>
+            <Link
+              to="/features"
+              className="px-4 py-2 hover:bg-gray-100 border-b"
+              onClick={() => setMenuOpen(false)}
+            >
+              Features
+            </Link>
+            <Link
+              to="/team"
+              className="px-4 py-2 hover:bg-gray-100 border-b"
+              onClick={() => setMenuOpen(false)}
+            >
+              Team
+            </Link>
+            <Link
+              to="/contact"
+              className="px-4 py-2 hover:bg-gray-100 border-b"
+              onClick={() => setMenuOpen(false)}
+            >
+              Contact Us
             </Link>
 
-            {/* Cart icon with count */}
-            <Link to="/cart" className="relative text-yellow-600 dark:text-yellow-500 hover:text-yellow-700">
-                <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-black"  // changed color for testing
-                fill="none"
-                 viewBox="0 0 24 24"
-                 stroke="currentColor"
-                 >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 5M7 13h10m-1 7a1 1 0 11-2 0 1 1 0 012 0zm-8 0a1 1 0 11-2 0 1 1 0 012 0z"
-                />
-              </svg>
-              {cartItems.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartItems.length}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </nav>
-      <nav className="w-full bg-red-50 dark:bg-red-600">
-        <div className="max-w-screen-xl px-4 py-3 mx-auto">
-          <div className="flex items-center">
-            <ul className="flex flex-row font-medium mt-0 space-x-8 rtl:space-x-reverse text-sm">
-              <li>
+            {!isLoggedIn && (
+              <Link
+                to="/login"
+                className="px-4 py-2 hover:bg-gray-100 border-b"
+                onClick={() => setMenuOpen(false)}
+              >
+                Login
+              </Link>
+            )}
+
+            {isLoggedIn && (
+              <>
                 <Link
-                  to="/"
-                  className="text-gray-900 dark:text-white hover:underline"
-                  aria-current="page"
+                  to="/dashboard"
+                  className="px-4 py-2 hover:bg-gray-100 border-b"
+                  onClick={() => setMenuOpen(false)}
                 >
-                  Home
+                  Profile
                 </Link>
-              </li>
-              <li>
-                <a href="#" className="text-gray-900 dark:text-white hover:underline">
-                  Company
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-900 dark:text-white hover:underline">
-                  Team
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-900 dark:text-white hover:underline">
-                  Features
-                </a>
-              </li>
-            </ul>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMenuOpen(false);
+                  }}
+                  className="px-4 py-2 text-left hover:bg-gray-100 text-red-600 font-semibold"
+                >
+                  Logout
+                </button>
+              </>
+            )}
           </div>
+        )}
+      </div>
+
+      {/* Mobile Search Input */}
+      {showSearch && (
+        <div className="absolute top-full left-0 w-full bg-white p-4 shadow-md md:hidden">
+          <input
+            type="text"
+            placeholder="Search..."
+            className="border px-3 py-2 w-full rounded-md bg-gray-100"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            autoFocus
+          />
         </div>
-      </nav>
-    </>
+      )}
+    </nav>
   );
 };
 
 export default Navbar;
+
+
+

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isTokenValid } from '../utils/auth';
 
 const AddressForm = () => {
   const navigate = useNavigate();
@@ -12,6 +13,14 @@ const AddressForm = () => {
     pincode: '',
   });
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !isTokenValid(token)) {
+      alert('Please login first to proceed to checkout.');
+      navigate('/login');
+    }
+  }, [navigate]);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -23,19 +32,19 @@ const AddressForm = () => {
       return;
     }
 
-    // Address info can be saved to localStorage or context here if needed
+    // Save address info to localStorage
     localStorage.setItem('deliveryAddress', JSON.stringify(form));
 
-    // Navigate to Payment page after address submission
+    // Navigate to payment page
     navigate('/payment');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="w-screen h-screen flex items-center justify-center bg-gray-100 p-4">
       <form onSubmit={handleSubmit} className="bg-white shadow-md rounded p-6 w-full max-w-md">
         <h2 className="text-2xl font-bold mb-4 text-yellow-900">Delivery Address</h2>
 
-        {['name', 'phone', 'address', 'city', 'state', 'pincode'].map(field => (
+        {['name', 'phone', 'address', 'city', 'state', 'pincode'].map((field) => (
           <input
             key={field}
             name={field}
@@ -43,6 +52,7 @@ const AddressForm = () => {
             value={form[field]}
             onChange={handleChange}
             className="w-full border px-3 py-2 mb-3 rounded focus:outline-none focus:ring-2 focus:ring-yellow-700"
+            required
           />
         ))}
 
@@ -58,4 +68,3 @@ const AddressForm = () => {
 };
 
 export default AddressForm;
-
