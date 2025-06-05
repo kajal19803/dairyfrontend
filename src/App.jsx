@@ -14,7 +14,7 @@ import Contact from './pages/Contact';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
-import PrivateRoute from './components/Privateroute';
+import PrivateRoute from './components/PrivateRoute';
 import Logout from './pages/Logout';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
