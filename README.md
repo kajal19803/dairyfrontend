@@ -1,12 +1,36 @@
-# React + Vite
+# Uma Dairy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Uma Dairy - A React and Node.js based platform to manage sales, inventory, and orders for dairy products such as cow milk, chhach, and ghee.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Inventory management  of dairy products such as cowdunk, chhach, and ghee inventory management  
+- Sales tracking aur order processing  
+- User-friendly interface  
+- Real-time stock updates  
+- Built with React (frontend) and Node.js/Express.js (backend)
 
-## Expanding the ESLint configuration
+## Technology Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Frontend: React.js, Tailwind CSS  
+- Backend: Node.js, Express.js  
+- Database: MongoDB atlas
+- Deployment: Render
+
+## Installation (Frontend)
+1. Repository clone karein:
+
+   ```bash
+   git clone https://github.com/kajal19803/uma-dairy-frontend.git
+   cd uma-dairy
+2.frontend dependencies with  cd ../frontend
+  npm install
+  
+5.Run Frontend development server with  npm run dev
+ 
+6. open in browser http://localhost:3000
+Note: ensure that Node.js and npm should already installed.
+
+
+
+
