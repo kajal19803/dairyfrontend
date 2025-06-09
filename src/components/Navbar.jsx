@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, MoreHorizontal, X, Search } from "lucide-react";
+import { ShoppingCart, MoreVertical, X, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
@@ -7,22 +7,46 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const { cartItems } = useCart();
   const navigate = useNavigate();
-
-  // Calculate total cart quantity
   const cartCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    // Check login status on mount
+  // ✅ Check auth status and role
+  const checkAuth = () => {
     const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
     setIsLoggedIn(!!token);
-  }, []);
+    setUserRole(role);
+  };
+
+  useEffect(() => {
+  const checkAuth = () => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
+    setIsLoggedIn(!!token);
+    setUserRole(role);
+  };
+
+  checkAuth();
+
+  window.addEventListener("userUpdated", checkAuth);
+  window.addEventListener("storage", checkAuth);
+
+  return () => {
+    window.removeEventListener("userUpdated", checkAuth);
+    window.removeEventListener("storage", checkAuth);
+  };
+}, []);
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userRole");
     setIsLoggedIn(false);
+    setUserRole(null);
     navigate("/login");
     setMenuOpen(false);
   };
@@ -37,144 +61,115 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center relative z-50">
-      {/* Left: Logo */}
-      <div className="flex items-center space-x-4">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Logo */}
         <div className="text-2xl font-bold text-blue-600">
-          <Link to="/" onClick={() => setMenuOpen(false)}>
-            Uma Dairy
-          </Link>
-        </div>
-      </div>
-
-      {/* Center: Desktop Search Bar */}
-      <div className="hidden md:flex flex-1 px-6">
-        <input
-          type="text"
-          placeholder="Search..."
-          className="border px-3 py-1 rounded-md w-full bg-gray-100"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleSearchKeyDown}
-        />
-      </div>
-
-      {/* Right: Cart, Search (mobile), Login/Profile/Logout, Menu toggle */}
-      <div className="flex items-center space-x-4">
-        {/* Mobile Search Icon */}
-        <div className="md:hidden">
-          <button onClick={() => setShowSearch(!showSearch)} aria-label="Toggle search">
-            <Search className="w-5 h-5 text-gray-700" />
-          </button>
+          <Link to="/" onClick={() => setMenuOpen(false)}>Uma Dairy</Link>
         </div>
 
-        {/* Cart Icon */}
-        <div className="relative">
-          <Link to="/cart" onClick={() => setMenuOpen(false)} aria-label="Cart">
-            <ShoppingCart className="w-5 h-5 text-gray-700" />
-          </Link>
-          {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {cartCount}
-            </span>
-          )}
-        </div>
+        {/* Right Side */}
+        <div className="flex items-center space-x-4">
+          {/* Desktop Search */}
+          <div className="hidden md:flex w-[250px]">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="border px-3 py-1 rounded-md w-full bg-gray-100 text-black"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+            />
+          </div>
 
-        {/* Desktop Auth Links */}
-        <div className="hidden md:flex items-center space-x-4 font-medium text-gray-700">
-          {!isLoggedIn && (
-            <Link to="/login" onClick={() => setMenuOpen(false)}>
-              Login
-            </Link>
-          )}
-          {isLoggedIn && (
-            <>
-              <Link to="/dashboard" onClick={() => setMenuOpen(false)}>
-                Profile
+          {/* Mobile Search Icon */}
+          <div className="md:hidden">
+            <button onClick={() => setShowSearch(!showSearch)} aria-label="Toggle search">
+              <Search className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
+
+          {/* Cart (Only for User) */}
+          {userRole !== "admin" && (
+            <div className="relative">
+              <Link to="/cart" onClick={() => setMenuOpen(false)} aria-label="Cart">
+                <ShoppingCart className="w-5 h-5 text-gray-700" />
               </Link>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-white"
-              >
-                Logout
-              </button>
-            </>
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* Mobile Menu Toggle (3 dots or X) */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-          className="ml-4 relative"
-        >
-          {menuOpen ? <X className="w-6 h-6" /> : <MoreHorizontal className="w-6 h-6" />}
-        </button>
-
-        {/* Mobile Dropdown Menu */}
-        {menuOpen && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-white shadow-md rounded-md z-50 flex flex-col text-gray-700">
-            <Link
-              to="/"
-              className="px-4 py-2 hover:bg-gray-100 border-b"
-              onClick={() => setMenuOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              to="/features"
-              className="px-4 py-2 hover:bg-gray-100 border-b"
-              onClick={() => setMenuOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              to="/team"
-              className="px-4 py-2 hover:bg-gray-100 border-b"
-              onClick={() => setMenuOpen(false)}
-            >
-              Team
-            </Link>
-            <Link
-              to="/contact"
-              className="px-4 py-2 hover:bg-gray-100 border-b"
-              onClick={() => setMenuOpen(false)}
-            >
-              Contact Us
-            </Link>
-
-            {!isLoggedIn && (
-              <Link
-                to="/login"
-                className="px-4 py-2 hover:bg-gray-100 border-b"
-                onClick={() => setMenuOpen(false)}
-              >
-                Login
-              </Link>
-            )}
-
-            {isLoggedIn && (
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center space-x-4 font-medium text-gray-700">
+            {!isLoggedIn ? (
+              <Link to="/login" onClick={() => setMenuOpen(false)}>Login</Link>
+            ) : (
               <>
-                <Link
-                  to="/dashboard"
-                  className="px-4 py-2 hover:bg-gray-100 border-b"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Profile
-                </Link>
+                {userRole === "admin" ? (
+                  <Link to="/admindashboard" onClick={() => setMenuOpen(false)}>Admin Dashboard</Link>
+                ) : (
+                  <>
+                    <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Profile</Link>
+                    <Link to="/myorders" onClick={() => setMenuOpen(false)}>My Orders</Link>
+                  </>
+                )}
                 <button
-                  onClick={() => {
-                    handleLogout();
-                    setMenuOpen(false);
-                  }}
-                  className="px-4 py-2 text-left hover:bg-gray-100 text-red-600 font-semibold"
+                  onClick={handleLogout}
+                  className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-white"
                 >
                   Logout
                 </button>
               </>
             )}
           </div>
-        )}
+
+          {/* Menu Toggle */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+            className="ml-1 p-0 bg-transparent border-none outline-none"
+          >
+            {menuOpen ? <X className="w-6 h-6 text-black" /> : <MoreVertical className="w-6 h-6 text-black" />}
+          </button>
+
+          {/* Mobile Dropdown */}
+          {menuOpen && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white shadow-md rounded-md z-50 flex flex-col text-gray-700">
+              <Link to="/" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Home</Link>
+              <Link to="/features" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Features</Link>
+              <Link to="/team" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Team</Link>
+              <Link to="/contact" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Contact Us</Link>
+
+              {!isLoggedIn ? (
+                <Link to="/login" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Login</Link>
+              ) : (
+                <>
+                  {userRole === "admin" ? (
+                    <Link to="/admindashboard" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Admin Dashboard</Link>
+                  ) : (
+                    <>
+                      <Link to="/dashboard" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>Profile</Link>
+                      <Link to="/myorders" className="px-4 py-2 hover:bg-gray-100 border-b" onClick={() => setMenuOpen(false)}>My Orders</Link>
+                    </>
+                  )}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMenuOpen(false);
+                    }}
+                    className="px-4 py-2 text-left hover:bg-gray-100 text-red-600 font-semibold"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mobile Search Input */}
@@ -183,7 +178,7 @@ const Navbar = () => {
           <input
             type="text"
             placeholder="Search..."
-            className="border px-3 py-2 w-full rounded-md bg-gray-100"
+            className="border px-3 py-2 w-full rounded-md bg-gray-100 text-black"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -196,6 +191,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-
 

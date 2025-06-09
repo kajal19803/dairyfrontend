@@ -4,33 +4,44 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+const API_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 const Login = () => {
   const navigate = useNavigate();
 
   const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [fpStep, setFpStep] = useState(1);
+  const [fpData, setFpData] = useState({ email: '', otp: '', newPassword: '' });
 
-  const API_URL = "https://dairybackend-jxab.onrender.com";
+  const handleChange = ({ target: { name, value } }) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFpChange = ({ target: { name, value } }) => {
+    setFpData(prev => ({ ...prev, [name]: value }));
+  };
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
     setFormData({ name: '', email: '', password: '', confirmPassword: '' });
     setErrors({});
+    setOtp('');
+    setOtpSent(false);
+    setIsOtpVerified(false);
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const errs = {};
 
@@ -42,16 +53,24 @@ const Login = () => {
     if (!isLogin) {
       if (!formData.name.trim()) errs.name = 'Name is required';
       if (formData.password.length < 6) errs.password = 'Password must be 6+ chars';
-      if (formData.confirmPassword !== formData.password) {
-        errs.confirmPassword = 'Passwords do not match';
-      }
+      if (formData.confirmPassword !== formData.password) errs.confirmPassword = 'Passwords do not match';
+      if (!isOtpVerified) errs.otp = 'Please verify OTP first';
     }
 
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length) return;
 
     try {
       setLoading(true);
+      if (!isLogin) {
+        const chk = await axios.post(`${API_URL}/api/auth/check-user`, { email: formData.email });
+        if (chk.data.exists) {
+          toast.error('User already exists, please login.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const endpoint = isLogin ? '/login' : '/register';
       const payload = isLogin
         ? { email: formData.email, password: formData.password }
@@ -60,42 +79,104 @@ const Login = () => {
       const res = await axios.post(`${API_URL}/api/auth${endpoint}`, payload);
 
       if (res.data.token) {
+        const user = res.data.user || {};
         localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user || {}));
+        localStorage.setItem('user', JSON.stringify(user));
+
         toast.success(isLogin ? 'Login successful!' : 'Registration successful!');
-        navigate('/dashboard', { replace: true });  // <-- Always redirect to /dashboard
+
+        const isAdmin = user.email === ADMIN_EMAIL;
+        localStorage.setItem('userRole', isAdmin ? 'admin' : 'user');
+        window.dispatchEvent(new Event("userUpdated"));
+
+        navigate(isAdmin ? '/admindashboard' : '/dashboard', { replace: true });
       } else {
-        toast.error(res.data.message || 'Auth failed!');
+        toast.error(res.data.message || 'Authentication failed!');
       }
-    } catch (error) {
-      console.error(error);
-      toast.error('Something went wrong!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'An error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLoginSuccess = (credentialResponse) => {
-    fetch(`${API_URL}/api/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: credentialResponse.credential }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user || {}));
+  const sendOtp = async () => {
+    if (!formData.email) {
+      toast.error('Please enter your email first');
+      return;
+    }
+    try {
+      await axios.post(`${API_URL}/api/email-otp/send`, { email: formData.email });
+      toast.success('OTP sent to your email!');
+      setOtpSent(true);
+    } catch {
+      toast.error('Failed to send OTP');
+    }
+  };
+
+  const verifyOtp = async () => {
+    try {
+      await axios.post(`${API_URL}/api/email-otp/verify`, { email: formData.email, otp });
+      toast.success('OTP verified!');
+      setIsOtpVerified(true);
+    } catch {
+      toast.error('OTP verification failed');
+    }
+  };
+
+  const handleFp = async () => {
+    try {
+      if (fpStep === 1) {
+        if (!fpData.email) {
+          toast.error('Please enter your email');
+          return;
+        }
+        await axios.post(`${API_URL}/api/email-otp/send`, { email: fpData.email });
+        toast.success('OTP sent to your email');
+        setFpStep(2);
+      } else if (fpStep === 2) {
+        if (!fpData.otp) {
+          toast.error('Please enter OTP');
+          return;
+        }
+        await axios.post(`${API_URL}/api/email-otp/verify`, { email: fpData.email, otp: fpData.otp });
+        toast.success('OTP verified');
+        setFpStep(3);
+      } else if (fpStep === 3) {
+        if (!fpData.newPassword || fpData.newPassword.length < 6) {
+          toast.error('New password must be at least 6 characters');
+          return;
+        }
+        await axios.post(`${API_URL}/api/auth/reset-password`, { email: fpData.email, newPassword: fpData.newPassword });
+        toast.success('Password reset successful!');
+        setShowForgot(false);
+        setFpStep(1);
+        setFpData({ email: '', otp: '', newPassword: '' });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error in password reset flow');
+    }
+  };
+
+  const handleGoogleLoginSuccess = response => {
+    axios
+      .post(`${API_URL}/api/auth/google`, { token: response.credential })
+      .then(res => {
+        if (res.data.token) {
+          const user = res.data.user;
+          localStorage.setItem('token', res.data.token);
+          localStorage.setItem('user', JSON.stringify(user));
+
+          const isAdmin = user.email === ADMIN_EMAIL;
+          localStorage.setItem('userRole', isAdmin ? 'admin' : 'user');
+          window.dispatchEvent(new Event("userUpdated"));
           toast.success('Google login successful!');
-          navigate('/dashboard', { replace: true });  // <-- Always redirect to /dashboard
+          navigate(isAdmin ? '/admindashboard' : '/dashboard', { replace: true });
         } else {
-          toast.error(data.message || 'Google login failed!');
+          toast.error(res.data.message || 'Google login failed!');
         }
       })
-      .catch((err) => {
-        console.error('Google login error:', err);
-        toast.error('Google login error!');
-      });
+      .catch(() => toast.error('Google login error!'));
   };
 
   const handleGoogleLoginError = () => {
@@ -103,74 +184,207 @@ const Login = () => {
   };
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="w-screen h-screen bg-gray-100 flex items-center justify-center p-4">
       <ToastContainer />
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-green-700 mb-6">
+      <div className="bg-white p-8 rounded-md shadow-md w-full max-w-md">
+        <h2 className="text-2xl font-bold text-green-700 text-center mb-6">
           {isLogin ? 'Login to Uma Dairy' : 'Register for Uma Dairy'}
         </h2>
 
         <form onSubmit={handleSubmit} noValidate>
           {!isLogin && (
             <div className="mb-4">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
               <input
-                type="text" id="name" name="name" value={formData.name} onChange={handleChange}
-                className={`w-full p-2 border rounded-md ${errors.name ? 'border-red-500' : ''}`} />
-              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full p-2 border bg-white border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-600"
+                placeholder="Enter your full name"
+              />
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
           )}
 
           <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
-              type="email" id="email" name="email" value={formData.email} onChange={handleChange}
-              className={`w-full p-2 border rounded-md ${errors.email ? 'border-red-500' : ''}`} />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full p-2 border bg-white border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-600"
+              placeholder="Enter your email"
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+
+            {!isLogin && (
+              <button
+                type="button"
+                onClick={sendOtp}
+                disabled={otpSent}
+                className="text-green-600 hover:underline text-sm focus:outline-none bg-transparent p-0 border-0 mt-1"
+              >
+                {otpSent ? 'OTP Sent' : 'Send OTP'}
+              </button>
+            )}
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+          {otpSent && !isOtpVerified && !isLogin && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Enter OTP</label>
+              <input
+                value={otp}
+                onChange={e => setOtp(e.target.value)}
+                className="w-full p-2 border bg-white border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-600"
+                placeholder="Enter the OTP"
+              />
+              <button
+                type="button"
+                onClick={verifyOtp}
+                className="text-green-600 hover:underline text-sm focus:outline-none bg-transparent p-0 border-0 mt-1"
+              >
+                Verify OTP
+              </button>
+              {errors.otp && <p className="text-red-500 text-sm mt-1">{errors.otp}</p>}
+            </div>
+          )}
+
+          <div className="mb-4 relative">
+            <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
-              type="password" id="password" name="password" value={formData.password} onChange={handleChange}
-              className={`w-full p-2 border rounded-md ${errors.password ? 'border-red-500' : ''}`} />
-            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+              name="password"
+              type={showPass ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full p-2 border bg-white border-gray-300 rounded pr-10 focus:outline-none focus:ring-2 focus:ring-green-600"
+              placeholder="Enter your password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(prev => !prev)}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600"
+              tabIndex={-1}
+              aria-label={showPass ? 'Hide password' : 'Show password'}
+            >
+              {showPass ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+            </button>
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {!isLogin && (
-            <div className="mb-4">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <div className="mb-4 relative">
+              <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
               <input
-                type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword}
+                name="confirmPassword"
+                type={showConfirmPass ? 'text' : 'password'}
+                value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full p-2 border rounded-md ${errors.confirmPassword ? 'border-red-500' : ''}`} />
-              {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword}</p>}
+                className="w-full p-2 border bg-white border-gray-300 rounded pr-10 focus:outline-none focus:ring-2 focus:ring-green-600"
+                placeholder="Confirm your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(prev => !prev)}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600"
+                tabIndex={-1}
+                aria-label={showConfirmPass ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPass ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+              {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50"
+            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50"
           >
             {loading ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        {isLogin && (
+          <div className="text-right mt-2">
+            <button
+              onClick={() => setShowForgot(true)}
+              className="text-green-600 hover:underline text-sm"
+            >
+              Forgot Password?
+            </button>
+          </div>
+        )}
+
+        <p className="mt-4 text-center text-gray-600 text-sm">
           {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button onClick={toggleForm} className="text-green-600 hover:underline">
+          <button onClick={toggleForm} className="text-green-600 hover:underline text-sm">
             {isLogin ? 'Register here' : 'Login here'}
           </button>
         </p>
 
-        <div className="mt-6 flex justify-center">
+        <div className="flex justify-center mt-6">
           <GoogleLogin onSuccess={handleGoogleLoginSuccess} onError={handleGoogleLoginError} />
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white p-6 rounded w-96 shadow-lg">
+            <h3 className="text-lg font-semibold text-green-700 mb-4">Reset Password</h3>
+            {fpStep === 1 && (
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter email"
+                value={fpData.email}
+                onChange={handleFpChange}
+                className="w-full p-2 border bg-white border-gray-300 rounded mb-4"
+              />
+            )}
+            {fpStep === 2 && (
+              <input
+                name="otp"
+                placeholder="Enter OTP"
+                value={fpData.otp}
+                onChange={handleFpChange}
+                className="w-full p-2 border bg-white border-gray-300 rounded mb-4"
+              />
+            )}
+            {fpStep === 3 && (
+              <input
+                name="newPassword"
+                type="password"
+                placeholder="New Password"
+                value={fpData.newPassword}
+                onChange={handleFpChange}
+                className="w-full p-2 border bg-white border-gray-300 rounded mb-4"
+              />
+            )}
+            <div className="flex justify-between">
+              <button
+                onClick={() => {
+                  setShowForgot(false);
+                  setFpStep(1);
+                  setFpData({ email: '', otp: '', newPassword: '' });
+                }}
+                className="text-green-600 hover:underline text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFp}
+                className="text-green-600 hover:underline text-sm"
+              >
+                {fpStep === 1 ? 'Send OTP' : fpStep === 2 ? 'Verify OTP' : 'Reset Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Login;
-

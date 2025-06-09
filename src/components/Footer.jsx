@@ -1,40 +1,45 @@
 import { Link } from 'react-router-dom';
 
 const Footer = () => (
-  <footer className="w-full bg-green-800 text-white p-4 text-center">
-    <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
-      © 2025{' '}
-      <a href="https://flowbite.com/" className="hover:underline" target="_blank" rel="noopener noreferrer">
-        Uma dairy
-      </a>
-      . All Rights Reserved.
-    </span>
-    <ul className="flex flex-wrap items-center mt-3 text-sm font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
-      <li>
-        <Link to="/about" className="hover:underline me-4 md:me-6">
-          About
-        </Link>
-      </li>
-      <li>
-        {/* Agar future me Privacy Policy page banega to isse replace karna */}
-        <a href="/privacy-policy" className="hover:underline me-4 md:me-6">
-          Privacy Policy
+  <footer className="w-full bg-green-800 dark:bg-gray-900 text-white dark:text-gray-300 px-6 py-4">
+    <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+      <span className="text-sm text-gray-100 dark:text-gray-400">
+        © 2025{' '}
+        <a
+          href="https://flowbite.com/"
+          className="hover:underline font-semibold text-white dark:text-green-400"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Uma Dairy
         </a>
-      </li>
-      <li>
-        {/* Agar future me Licensing page banega to isse replace karna */}
-        <a href="/licensing" className="hover:underline me-4 md:me-6">
-          Licensing
-        </a>
-      </li>
-      <li>
-        {/* Contact page link, aise hi rehne do ya React Router ka Link karo */}
-        <Link to="/contact" className="hover:underline">
-          Contact
-        </Link>
-      </li>
-    </ul>
+        . All Rights Reserved.
+      </span>
+      <ul className="flex flex-wrap gap-x-6 text-sm text-gray-200 dark:text-gray-400 font-medium">
+        <li>
+          <Link to="/about" className="hover:text-white dark:hover:text-white">
+            About
+          </Link>
+        </li>
+        <li>
+          <Link to="/privacy-policy" className="hover:text-white dark:hover:text-white">
+            Privacy Policy
+          </Link>
+        </li>
+        <li>
+          <Link to="/licensing" className="hover:text-white dark:hover:text-white">
+            Licensing
+          </Link>
+        </li>
+        <li>
+          <Link to="/contact" className="hover:text-white dark:hover:text-white">
+            Contact
+          </Link>
+        </li>
+      </ul>
+    </div>
   </footer>
 );
 
 export default Footer;
+

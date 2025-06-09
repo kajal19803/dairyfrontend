@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { isTokenValid } from '../utils/auth';
-
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 const Cart = () => {
   const navigate = useNavigate();
   const { cartItems, removeFromCart, updateQuantity, clearCart } = useCart();
+
   const [loading, setLoading] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
-
   const [address, setAddress] = useState({
     fullName: '',
     street: '',
@@ -18,82 +18,204 @@ const Cart = () => {
     phone: '',
   });
 
-  const getPriceNumber = (priceStr) => {
-    const match = priceStr.match(/₹(\d+)/);
-    return match ? parseInt(match[1], 10) : 0;
-  };
+  // Helper to parse price string like '₹200' to number 200
+  const getPriceNumber = (price) => {
+  if (typeof price === 'number') {
+    return price;
+  }
+  if (typeof price === 'string') {
+    const match = price.match(/₹(\d+(\.\d+)?)/);
+    if (match) {
+      return parseFloat(match[1]);
+    }
+    const parsed = parseFloat(price);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
 
-  const totalPrice = cartItems.reduce((total, item) => {
-    return total + getPriceNumber(item.price) * (item.quantity || 1);
-  }, 0);
+const totalPrice = cartItems.reduce((total, item) => {
+  return total + getPriceNumber(item.price) * (item.quantity || 1);
+}, 0);
 
+
+  // Check if user is logged in and token is valid
   const isLoggedIn = () => {
     const token = localStorage.getItem('token');
     return token && token.trim() !== '' && isTokenValid(token);
   };
 
-  const handlePlaceOrderClick = () => {
+  // Fetch user data for address & phone (from backend)
+  const fetchUserData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    try {
+      const res = await fetch('https://dairybackend-jxab.onrender.com/api/user', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch user data');
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
+  // On clicking place order
+  const handlePlaceOrderClick = async () => {
     if (!isLoggedIn()) {
       alert('Please login first to place your order.');
       navigate('/login');
       return;
     }
-    setShowAddressForm(true);
-  };
 
-  const handleProceedCheckoutClick = () => {
-    if (!isLoggedIn()) {
-      alert('Please login first to proceed to checkout.');
+    setLoading(true);
+    const userData = await fetchUserData();
+    setLoading(false);
+
+    if (!userData) {
+      alert('Failed to load user data. Please login again.');
+      localStorage.removeItem('token');
       navigate('/login');
       return;
     }
-    navigate('/address'); // or wherever your checkout page is
+
+    // If address or phone is incomplete, show form prefilled
+    if (
+      !userData.address?.fullName ||
+      !userData.address?.street ||
+      !userData.address?.city ||
+      !userData.address?.state ||
+      !userData.address?.zip ||
+      !userData.phoneNumber
+    ) {
+      setAddress({
+        fullName: userData.address?.fullName || '',
+        street: userData.address?.street || '',
+        city: userData.address?.city || '',
+        state: userData.address?.state || '',
+        zip: userData.address?.zip || '',
+        phone: userData.phoneNumber || '',
+      });
+      setShowAddressForm(true);
+    } else {
+      // Address exists, navigate to payment directly
+      navigate('/payment', {
+        state: {
+          address: {
+            fullName: userData.address.fullName,
+            street: userData.address.street,
+            city: userData.address.city,
+            state: userData.address.state,
+            zip: userData.address.zip,
+            phone: userData.phoneNumber,
+          },
+          cartItems,
+          totalPrice,
+        },
+      });
+    }
   };
 
+  // Address input change handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setAddress((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleOrderSubmit = (e) => {
+  // Submit address form and place order
+  const handleOrderSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !address.fullName ||
-      !address.street ||
-      !address.city ||
-      !address.state ||
-      !address.zip ||
-      !address.phone
-    ) {
+    const { fullName, street, city, state, zip, phone } = address;
+    if (!fullName || !street || !city || !state || !zip || !phone) {
       alert('Please fill in all address fields.');
       return;
     }
 
     setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
 
-    setTimeout(() => {
+      // Update user contact info
+      const res = await fetch('https://dairybackend-jxab.onrender.com/api/auth/update-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          address: { fullName, street, city, state, zip },
+          phoneNumber: phone,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update contact info');
+
+      // Fetch updated user for userId
+      const userData = await fetchUserData();
+      const userId = userData?._id || userData?.id;
+      if (!userId) throw new Error('User ID not found');
+
+      // Save order to backend
+      const orderRes = await fetch('https://dairybackend-jxab.onrender.com/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          items: cartItems,
+          totalPrice,
+          address: { fullName, street, city, state, zip, phone },
+          status: 'Pending',
+        }),
+      });
+
+      if (!orderRes.ok) throw new Error('Failed to place order');
+      const orderData = await orderRes.json();
+
       setLoading(false);
-      navigate('/payment', { state: { address, cartItems, totalPrice } });
-    }, 1500);
+      setShowAddressForm(false);
+      clearCart();
+
+      // Navigate to payment page
+      navigate('/payment', {
+        state: {
+          address,
+          cartItems,
+          totalPrice,
+          orderId: orderData._id,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      alert('Failed to place order. Please try again.');
+      setLoading(false);
+    }
   };
 
-  if (cartItems.length === 0)
+  // If cart empty, show message
+  if (cartItems.length === 0) {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
         <p className="text-xl font-semibold text-gray-800 mb-3">Cart is empty</p>
         <a
-          href="/"
+          href="/products"
           className="text-base text-yellow-700 hover:underline hover:text-yellow-800"
         >
           View products
         </a>
       </div>
     );
+  }
 
   return (
     <div className="w-screen min-h-screen flex flex-col items-center bg-gray-100 p-4">
       <h1 className="text-2xl font-bold mb-6 text-yellow-900">Your cart</h1>
+
       <div className="w-full max-w-3xl space-y-4">
         {cartItems.map((item) => (
           <div
@@ -101,7 +223,7 @@ const Cart = () => {
             className="flex items-center border rounded p-3 shadow-sm bg-white"
           >
             <img
-              src={item.image}
+              src={`${BACKEND_BASE_URL}${item.image}`}
               alt={item.name}
               className="w-16 h-16 object-cover rounded"
             />
@@ -109,8 +231,9 @@ const Cart = () => {
               <h2 className="text-lg font-semibold text-blue-700">{item.name}</h2>
               <p className="text-sm text-gray-700">{item.description}</p>
               <p className="text-green-800 font-semibold mt-1">{item.price}</p>
-              <p className="text-gray-600 text-sm">Quantity: {item.quantity || 1}</p>
-
+              <p className="text-gray-600 text-sm">
+                Quantity: {item.quantity || 1}
+              </p>
               <div className="mt-2 flex items-center space-x-2">
                 <button
                   onClick={() =>
@@ -134,6 +257,7 @@ const Cart = () => {
                 </button>
               </div>
             </div>
+
             <button
               onClick={() => {
                 if (
@@ -154,23 +278,17 @@ const Cart = () => {
       </div>
 
       <div className="mt-6 w-full max-w-3xl text-right text-xl font-bold text-yellow-900">
-        Total price: ₹{totalPrice}
+        Total price: ₹{totalPrice.toFixed(2)}
       </div>
 
       {!showAddressForm && (
         <div className="mt-6 text-right space-x-4">
           <button
-            onClick={handleProceedCheckoutClick}
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-          >
-            Proceed to Checkout
-          </button>
-
-          <button
             onClick={handlePlaceOrderClick}
             className="px-6 py-3 rounded text-white font-bold bg-yellow-700 hover:bg-yellow-800"
+            disabled={loading}
           >
-            Place Order
+            {loading ? 'Loading...' : 'Place Order'}
           </button>
         </div>
       )}
@@ -245,7 +363,7 @@ const Cart = () => {
               disabled={loading}
               className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
             >
-              {loading ? 'Placing order...' : 'Submit Order'}
+              {loading ? 'Saving...' : 'Submit Order'}
             </button>
           </div>
         </form>
