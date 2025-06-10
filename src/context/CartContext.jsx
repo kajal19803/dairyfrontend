@@ -8,10 +8,10 @@ export const CartProvider = ({ children }) => {
   // Add item to cart or update quantity if already exists
   const addToCart = (product) => {
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find(item => item.id === product.id);
+      const existingItem = prevItems.find(item => item._id === product._id);
       if (existingItem) {
         return prevItems.map(item =>
-          item.id === product.id ? { ...item, quantity: (item.quantity || 1) + 1 } : item
+          item._id === product._id ? { ...item, quantity: (item.quantity || 1) + 1 } : item
         );
       } else {
         return [...prevItems, { ...product, quantity: 1 }];
@@ -19,28 +19,30 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // Remove item from cart by id
+  // Remove item from cart by _id
   const removeFromCart = (productId) => {
-    setCartItems((prevItems) => prevItems.filter(item => item.id !== productId));
+    setCartItems((prevItems) => prevItems.filter(item => item._id !== productId));
   };
 
   // Update quantity of a specific item
   const updateQuantity = (productId, quantity) => {
-    if (quantity < 1) return; // quantity should never go below 1
+    if (quantity < 1) return;
     setCartItems((prevItems) =>
       prevItems.map(item =>
-        item.id === productId ? { ...item, quantity } : item
+        item._id === productId ? { ...item, quantity } : item
       )
     );
   };
 
-  // Clear the entire cart (after placing order)
+  // Clear entire cart
   const clearCart = () => {
     setCartItems([]);
   };
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart }}>
+    <CartContext.Provider
+      value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart }}
+    >
       {children}
     </CartContext.Provider>
   );
@@ -53,3 +55,4 @@ export const useCart = () => {
   }
   return context;
 };
+

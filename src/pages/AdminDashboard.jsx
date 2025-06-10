@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 const AdminDashboard = () => {
   const navigate = useNavigate();
 
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
   const [userList, setUserList] = useState([]);
   const [ordersToday, setOrdersToday] = useState(0);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
 
-  // Product modal state (your existing one)
   const [showProductModal, setShowProductModal] = useState(false);
   const [productData, setProductData] = useState({
     name: '',
@@ -20,7 +21,6 @@ const AdminDashboard = () => {
     image: null,
   });
 
-  // Offer modal state (new)
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerData, setOfferData] = useState({
     title: '',
@@ -44,7 +44,7 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/users', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -59,7 +59,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/admin/dashboard-stats', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/admin/dashboard-stats`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -84,7 +84,7 @@ const AdminDashboard = () => {
     formData.append('image', productData.image);
 
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/products/add', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/products/add`, {
         method: 'POST',
         body: formData,
       });
@@ -110,7 +110,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // New: handle offer form submit
   const handleAddOffer = async (e) => {
     e.preventDefault();
 
@@ -122,7 +121,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/offers/add', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/offers/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +153,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Delete this user?')) return;
 
     try {
-      const res = await fetch(`https://dairybackend-jxab.onrender.com/api/users/${userId}`, {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/users/${userId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -389,3 +388,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+

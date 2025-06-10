@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
+const API_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 const Dashboard = () => {
   const [userData, setUserData] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditContact, setShowEditContact] = useState(false);
 
-  // Password change state
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Contact edit state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState({
     fullName: '',
@@ -36,7 +36,7 @@ const Dashboard = () => {
 
     const fetchUser = async () => {
       try {
-        const res = await fetch('https://dairybackend-jxab.onrender.com/api/user', {
+        const res = await fetch(`${API_URL}/api/user`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -45,9 +45,7 @@ const Dashboard = () => {
         if (!res.ok) throw new Error('Failed to fetch user');
 
         const data = await res.json();
-        setUserData(data); // contains name, email, image, phoneNumber, address etc.
-
-        // Pre-fill phone and address fields for edit form
+        setUserData(data);
         setPhoneNumber(data.phoneNumber || '');
         setAddress(data.address || {
           fullName: '',
@@ -66,14 +64,12 @@ const Dashboard = () => {
     fetchUser();
   }, [navigate]);
 
-  // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/login');
   };
 
-  // Password change handlers
   const openChangePassword = () => {
     setError('');
     setSuccess('');
@@ -108,7 +104,7 @@ const Dashboard = () => {
     }
 
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/auth/change-password', {
+      const res = await fetch(`${API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +130,6 @@ const Dashboard = () => {
     }
   };
 
-  // Contact edit handlers
   const openEditContact = () => {
     setError('');
     setSuccess('');
@@ -154,7 +149,6 @@ const Dashboard = () => {
     setError('');
     setSuccess('');
 
-    // Validation
     if (!phoneNumber) {
       setError('Phone number is required');
       return;
@@ -171,7 +165,7 @@ const Dashboard = () => {
     }
 
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/auth/update-contact', {
+      const res = await fetch(`${API_URL}/api/auth/update-contact`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -269,12 +263,10 @@ const Dashboard = () => {
         </section>
       </main>
 
-      {/* Change Password Modal */}
       {showChangePassword && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded p-6 w-96">
             <h3 className="text-xl font-semibold mb-4">Change Password</h3>
-
             {error && <p className="text-red-600 mb-3">{error}</p>}
             {success && <p className="text-green-600 mb-3">{success}</p>}
 
@@ -318,7 +310,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Edit Contact Modal */}
       {showEditContact && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded p-6 w-96 max-h-[90vh] overflow-y-auto">
@@ -405,4 +396,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

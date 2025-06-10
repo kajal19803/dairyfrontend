@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { isTokenValid } from '../utils/auth';
+
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 const Cart = () => {
   const navigate = useNavigate();
   const { cartItems, removeFromCart, updateQuantity, clearCart } = useCart();
@@ -15,43 +17,34 @@ const Cart = () => {
     city: '',
     state: '',
     zip: '',
-    phone: '',
   });
+  const [phone, setPhone] = useState('');
 
-  // Helper to parse price string like '₹200' to number 200
   const getPriceNumber = (price) => {
-  if (typeof price === 'number') {
-    return price;
-  }
-  if (typeof price === 'string') {
-    const match = price.match(/₹(\d+(\.\d+)?)/);
-    if (match) {
-      return parseFloat(match[1]);
+    if (typeof price === 'number') return price;
+    if (typeof price === 'string') {
+      const match = price.match(/\u20B9(\d+(\.\d+)?)/);
+      if (match) return parseFloat(match[1]);
+      const parsed = parseFloat(price);
+      return isNaN(parsed) ? 0 : parsed;
     }
-    const parsed = parseFloat(price);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
-};
+    return 0;
+  };
 
-const totalPrice = cartItems.reduce((total, item) => {
-  return total + getPriceNumber(item.price) * (item.quantity || 1);
-}, 0);
+  const totalPrice = cartItems.reduce((total, item) => {
+    return total + getPriceNumber(item.price) * (item.quantity || 1);
+  }, 0);
 
-
-  // Check if user is logged in and token is valid
   const isLoggedIn = () => {
     const token = localStorage.getItem('token');
     return token && token.trim() !== '' && isTokenValid(token);
   };
 
-  // Fetch user data for address & phone (from backend)
   const fetchUserData = async () => {
     const token = localStorage.getItem('token');
     if (!token) return null;
-
     try {
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/user', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch user data');
@@ -62,7 +55,6 @@ const totalPrice = cartItems.reduce((total, item) => {
     }
   };
 
-  // On clicking place order
   const handlePlaceOrderClick = async () => {
     if (!isLoggedIn()) {
       alert('Please login first to place your order.');
@@ -81,65 +73,97 @@ const totalPrice = cartItems.reduce((total, item) => {
       return;
     }
 
-    // If address or phone is incomplete, show form prefilled
-    if (
-      !userData.address?.fullName ||
-      !userData.address?.street ||
-      !userData.address?.city ||
-      !userData.address?.state ||
-      !userData.address?.zip ||
-      !userData.phoneNumber
-    ) {
+    const addressData = {
+      fullName: userData.address?.fullName,
+      street: userData.address?.street,
+      city: userData.address?.city,
+      state: userData.address?.state,
+      zip: userData.address?.zip,
+    };
+
+    const phoneData = userData.phoneNumber;
+
+    if (!addressData.fullName || !addressData.street || !addressData.city || !addressData.state || !addressData.zip || !phoneData) {
       setAddress({
-        fullName: userData.address?.fullName || '',
-        street: userData.address?.street || '',
-        city: userData.address?.city || '',
-        state: userData.address?.state || '',
-        zip: userData.address?.zip || '',
-        phone: userData.phoneNumber || '',
+        fullName: addressData.fullName || '',
+        street: addressData.street || '',
+        city: addressData.city || '',
+        state: addressData.state || '',
+        zip: addressData.zip || '',
       });
+      setPhone(phoneData || '');
       setShowAddressForm(true);
-    } else {
-      // Address exists, navigate to payment directly
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const orderPayload = {
+      userId: userData._id,
+      items: cartItems.map((item) => ({
+        productId: item._id,
+        quantity: item.quantity,
+        price: getPriceNumber(item.price),
+      })),
+      totalPrice,
+      address: addressData,
+      phone: phoneData,
+      status: 'Pending',
+    };
+
+    console.log('Auto order payload sent to backend:', orderPayload);
+
+    try {
+      const orderRes = await fetch(`${BACKEND_BASE_URL}/api/orders/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!orderRes.ok) throw new Error('Failed to place order');
+
+      const orderData = await orderRes.json();
+      localStorage.setItem('latestOrderId', orderData._id);
+
+      clearCart();
       navigate('/payment', {
         state: {
-          address: {
-            fullName: userData.address.fullName,
-            street: userData.address.street,
-            city: userData.address.city,
-            state: userData.address.state,
-            zip: userData.address.zip,
-            phone: userData.phoneNumber,
-          },
+          address: addressData,
+          phone: phoneData,
           cartItems,
           totalPrice,
+          orderId: orderData._id,
         },
       });
+    } catch (error) {
+      console.error(error);
+      alert('Order placement failed. Try again.');
+      setLoading(false);
     }
   };
 
-  // Address input change handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setAddress((prev) => ({ ...prev, [name]: value }));
+    if (name === 'phone') setPhone(value);
+    else setAddress((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Submit address form and place order
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
+    const { fullName, street, city, state, zip } = address;
 
-    const { fullName, street, city, state, zip, phone } = address;
     if (!fullName || !street || !city || !state || !zip || !phone) {
       alert('Please fill in all address fields.');
       return;
     }
 
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
+    const userId = JSON.parse(atob(token.split('.')[1])).id;
 
-      // Update user contact info
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/auth/update-contact', {
+    try {
+      await fetch(`${BACKEND_BASE_URL}/api/auth/update-contact`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,43 +175,45 @@ const totalPrice = cartItems.reduce((total, item) => {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update contact info');
+      const orderPayload = {
+        userId,
+        items: cartItems.map((item) => ({
+          productId: item._id,
+          quantity: item.quantity,
+          price: getPriceNumber(item.price),
+        })),
+        totalPrice,
+        address: { fullName, street, city, state, zip },
+        phone,
+        status: 'Pending',
+      };
 
-      // Fetch updated user for userId
-      const userData = await fetchUserData();
-      const userId = userData?._id || userData?.id;
-      if (!userId) throw new Error('User ID not found');
+      console.log('Order data being sent to backend:', orderPayload);
 
-      // Save order to backend
-      const orderRes = await fetch('https://dairybackend-jxab.onrender.com/api/orders', {
+      const orderRes = await fetch(`${BACKEND_BASE_URL}/api/orders/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userId,
-          items: cartItems,
-          totalPrice,
-          address: { fullName, street, city, state, zip, phone },
-          status: 'Pending',
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       if (!orderRes.ok) throw new Error('Failed to place order');
       const orderData = await orderRes.json();
+      localStorage.setItem('latestOrderId', orderData._id);
 
       setLoading(false);
       setShowAddressForm(false);
       clearCart();
 
-      // Navigate to payment page
       navigate('/payment', {
         state: {
           address,
           cartItems,
           totalPrice,
           orderId: orderData._id,
+          phone,
         },
       });
     } catch (error) {
@@ -197,17 +223,16 @@ const totalPrice = cartItems.reduce((total, item) => {
     }
   };
 
-  // If cart empty, show message
   if (cartItems.length === 0) {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
         <p className="text-xl font-semibold text-gray-800 mb-3">Cart is empty</p>
-        <a
-          href="/products"
+        <Link
+          to="/products"
           className="text-base text-yellow-700 hover:underline hover:text-yellow-800"
         >
           View products
-        </a>
+        </Link>
       </div>
     );
   }
@@ -215,13 +240,9 @@ const totalPrice = cartItems.reduce((total, item) => {
   return (
     <div className="w-screen min-h-screen flex flex-col items-center bg-gray-100 p-4">
       <h1 className="text-2xl font-bold mb-6 text-yellow-900">Your cart</h1>
-
       <div className="w-full max-w-3xl space-y-4">
         {cartItems.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center border rounded p-3 shadow-sm bg-white"
-          >
+          <div key={item._id} className="flex items-center border rounded p-3 shadow-sm bg-white">
             <img
               src={`${BACKEND_BASE_URL}${item.image}`}
               alt={item.name}
@@ -231,56 +252,40 @@ const totalPrice = cartItems.reduce((total, item) => {
               <h2 className="text-lg font-semibold text-blue-700">{item.name}</h2>
               <p className="text-sm text-gray-700">{item.description}</p>
               <p className="text-green-800 font-semibold mt-1">{item.price}</p>
-              <p className="text-gray-600 text-sm">
-                Quantity: {item.quantity || 1}
-              </p>
+              <p className="text-gray-600 text-sm">Quantity: {item.quantity || 1}</p>
               <div className="mt-2 flex items-center space-x-2">
                 <button
-                  onClick={() =>
-                    updateQuantity(item.id, (item.quantity || 1) - 1)
-                  }
+                  onClick={() => updateQuantity(item._id, (item.quantity || 1) - 1)}
                   disabled={(item.quantity || 1) <= 1}
                   className="px-2 py-1 bg-yellow-700 text-white rounded disabled:opacity-50"
-                  aria-label={`Decrease quantity of ${item.name}`}
                 >
                   -
                 </button>
                 <span>{item.quantity || 1}</span>
                 <button
-                  onClick={() =>
-                    updateQuantity(item.id, (item.quantity || 1) + 1)
-                  }
+                  onClick={() => updateQuantity(item._id, (item.quantity || 1) + 1)}
                   className="px-2 py-1 bg-yellow-700 text-white rounded"
-                  aria-label={`Increase quantity of ${item.name}`}
                 >
                   +
                 </button>
               </div>
             </div>
-
             <button
               onClick={() => {
-                if (
-                  window.confirm(
-                    `Are you sure you want to remove "${item.name}" from the cart?`
-                  )
-                ) {
-                  removeFromCart(item.id);
+                if (window.confirm(`Remove "${item.name}" from cart?`)) {
+                  removeFromCart(item._id);
                 }
               }}
               className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-              aria-label={`Remove ${item.name} from cart`}
             >
               Remove
             </button>
           </div>
         ))}
       </div>
-
       <div className="mt-6 w-full max-w-3xl text-right text-xl font-bold text-yellow-900">
-        Total price: ₹{totalPrice.toFixed(2)}
+        Total price: \u20B9{totalPrice.toFixed(2)}
       </div>
-
       {!showAddressForm && (
         <div className="mt-6 text-right space-x-4">
           <button
@@ -292,71 +297,33 @@ const totalPrice = cartItems.reduce((total, item) => {
           </button>
         </div>
       )}
-
       {showAddressForm && (
         <form
           onSubmit={handleOrderSubmit}
           className="mt-6 max-w-3xl w-full bg-white p-6 rounded shadow"
         >
-          <h2 className="text-xl font-semibold mb-4 text-yellow-900">
-            Shipping Address
-          </h2>
-
-          <input
-            type="text"
-            name="fullName"
-            value={address.fullName}
-            onChange={handleInputChange}
-            placeholder="Full Name"
-            required
-            className="w-full border p-2 rounded mb-3"
-          />
-          <input
-            type="text"
-            name="street"
-            value={address.street}
-            onChange={handleInputChange}
-            placeholder="Street Address"
-            required
-            className="w-full border p-2 rounded mb-3"
-          />
-          <input
-            type="text"
-            name="city"
-            value={address.city}
-            onChange={handleInputChange}
-            placeholder="City"
-            required
-            className="w-full border p-2 rounded mb-3"
-          />
-          <input
-            type="text"
-            name="state"
-            value={address.state}
-            onChange={handleInputChange}
-            placeholder="State"
-            required
-            className="w-full border p-2 rounded mb-3"
-          />
-          <input
-            type="text"
-            name="zip"
-            value={address.zip}
-            onChange={handleInputChange}
-            placeholder="ZIP Code"
-            required
-            className="w-full border p-2 rounded mb-3"
-          />
+          <h2 className="text-xl font-semibold mb-4 text-yellow-900">Shipping Address</h2>
+          {['fullName', 'street', 'city', 'state', 'zip'].map((field) => (
+            <input
+              key={field}
+              type="text"
+              name={field}
+              value={address[field]}
+              onChange={handleInputChange}
+              placeholder={field === 'zip' ? 'ZIP Code' : field.charAt(0).toUpperCase() + field.slice(1)}
+              required
+              className="w-full border p-2 rounded mb-3"
+            />
+          ))}
           <input
             type="tel"
             name="phone"
-            value={address.phone}
+            value={phone}
             onChange={handleInputChange}
-            placeholder="Phone Number"
+            placeholder="Phone"
             required
             className="w-full border p-2 rounded mb-3"
           />
-
           <div className="text-right">
             <button
               type="submit"

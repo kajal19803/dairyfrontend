@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ const MyOrders = () => {
     const fetchOrders = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('https://dairybackend-jxab.onrender.com/api/payment/my-orders', {
+        const res = await axios.get(`${BACKEND_BASE_URL}/api/payment/my-orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -33,7 +35,7 @@ const MyOrders = () => {
   if (error) return <div className="w-screen h-screen text-center mt-10 text-red-600 font-semibold">{error}</div>;
 
   if (!Array.isArray(orders) || orders.length === 0)
-    return <div className="tw-screen h-screen ext-center mt-10 text-gray-700">You have no orders yet.</div>;
+    return <div className="w-screen h-screen text-center mt-10 text-gray-700">You have no orders yet.</div>;
 
   return (
     <div className="flex flex-col w-screen h-screen p-4">
@@ -75,3 +77,4 @@ const MyOrders = () => {
 };
 
 export default MyOrders;
+

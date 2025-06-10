@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 const Products = () => {
   const [products, setProducts] = useState([]);
   const { cartItems, addToCart, updateQuantity } = useCart();
 
   useEffect(() => {
-    fetch('https://dairybackend-jxab.onrender.com/api/products')
+    fetch(`${BACKEND_BASE_URL}/api/products`)
       .then(res => res.json())
       .then(data => setProducts(data))
       .catch(err => console.error('Failed to fetch products:', err));
@@ -28,7 +30,7 @@ const Products = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-gray-50 p-6">
+    <div className="w-screen min-h-screen bg-gray-50 p-6">
       <h1 className="text-3xl font-bold text-center text-green-700 mb-6">All Products</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -40,7 +42,7 @@ const Products = () => {
           return (
             <div key={product._id} className="bg-white shadow-md rounded-lg p-4">
               <img
-                src={`https://dairybackend-jxab.onrender.com${product.image}`}
+                src={`${BACKEND_BASE_URL}${product.image}`}
                 alt={product.name}
                 className="h-40 w-full object-cover rounded-md mb-4"
               />
@@ -88,5 +90,3 @@ const Products = () => {
 };
 
 export default Products;
-
-

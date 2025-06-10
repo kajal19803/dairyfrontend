@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+
 const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,38 +30,32 @@ const Payment = () => {
 
     setLoading(true);
     try {
-      const amount = totalPrice;
       const token = localStorage.getItem('token');
-
-      const res = await fetch('https://dairybackend-jxab.onrender.com/api/payment/create-link', {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount: totalPrice,phone }),
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Server error: ${res.status} - ${text}`);
+        const errorText = await res.text();
+        throw new Error(`Server error: ${res.status} - ${errorText}`);
       }
 
       const data = await res.json();
 
       if (data.payment_link) {
-        // ✅ Open Cashfree payment page
-        window.location.href = data.payment_link;
-        // ✅ Inform user to check My Orders
-        alert("After completing the payment, please return and check 'My Orders' to see payment status.");
-
         clearCart();
-        navigate('/myorders');
+        alert("After completing payment, check 'My Orders' for the status.");
+        window.location.href = data.payment_link;
       } else {
         alert('Payment link creation failed');
       }
-    } catch (error) {
-      console.error('Payment error:', error);
+    } catch (err) {
+      console.error('Payment error:', err);
       alert('Payment request failed');
     }
 
@@ -120,5 +116,3 @@ const Payment = () => {
 };
 
 export default Payment;
-
-
