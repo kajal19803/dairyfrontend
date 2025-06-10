@@ -284,7 +284,7 @@ const Cart = () => {
         ))}
       </div>
       <div className="mt-6 w-full max-w-3xl text-right text-xl font-bold text-yellow-900">
-        Total price: \u20B9{totalPrice.toFixed(2)}
+        Total price: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalPrice)}
       </div>
       {!showAddressForm && (
         <div className="mt-6 text-right space-x-4">
