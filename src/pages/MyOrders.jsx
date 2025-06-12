@@ -18,9 +18,9 @@ const MyOrders = () => {
           },
         });
         console.log('Orders response:', res.data);
-        setOrders(res.data);
+        setOrders(res.data.orders);
       } catch (err) {
-        console.error('Fetch orders error:', err);
+        console.error ('Fetch orders error:', err);
         setError('Failed to fetch orders');
       } finally {
         setLoading(false);

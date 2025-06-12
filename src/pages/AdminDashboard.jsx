@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-
   const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
   const [userList, setUserList] = useState([]);
@@ -16,9 +15,13 @@ const AdminDashboard = () => {
     description: '',
     mrp: '',
     discount: '',
+    price: '',
+    unit: '',
+    ingredients: '',
+    nutritionalInfo: '',
     inStock: true,
     category: '',
-    image: null,
+    images: [],
   });
 
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -79,9 +82,16 @@ const AdminDashboard = () => {
     formData.append('description', productData.description);
     formData.append('mrp', productData.mrp);
     formData.append('discount', productData.discount);
+    formData.append('price', productData.price);
+    formData.append('unit', productData.unit);
+    formData.append('ingredients', productData.ingredients);
+    formData.append('nutritionalInfo', productData.nutritionalInfo);
     formData.append('inStock', productData.inStock);
     formData.append('category', productData.category);
-    formData.append('image', productData.image);
+
+    for (let i = 0; i < productData.images.length; i++) {
+      formData.append('images', productData.images[i]);
+    }
 
     try {
       const res = await fetch(`${BACKEND_BASE_URL}/api/products/add`, {
@@ -101,9 +111,13 @@ const AdminDashboard = () => {
         description: '',
         mrp: '',
         discount: '',
+        price: '',
+        unit: '',
+        ingredients: '',
+        nutritionalInfo: '',
         inStock: true,
         category: '',
-        image: null,
+        images: [],
       });
     } catch (err) {
       alert(err.message);
@@ -246,59 +260,64 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Product Modal */}
         {showProductModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-md shadow-lg p-6 w-96 relative">
+            <div className="bg-white rounded-md shadow-lg p-6 w-96 relative overflow-y-auto max-h-screen">
               <h3 className="text-xl font-semibold mb-4">Add New Product</h3>
               <form onSubmit={handleAddProduct} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Product Name"
-                  value={productData.name}
-                  onChange={(e) => setProductData({ ...productData, name: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <textarea
-                  placeholder="Description"
-                  value={productData.description}
-                  onChange={(e) => setProductData({ ...productData, description: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="MRP"
-                  value={productData.mrp}
-                  onChange={(e) => setProductData({ ...productData, mrp: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Discount (%)"
-                  value={productData.discount}
-                  onChange={(e) => setProductData({ ...productData, discount: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Category"
-                  value={productData.category}
-                  onChange={(e) => setProductData({ ...productData, category: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="file"
-                  onChange={(e) => setProductData({ ...productData, image: e.target.files[0] })}
-                  className="w-full"
-                  accept="image/*"
-                  required
-                />
-                <div className="flex justify-end gap-3 mt-4">
+                {[
+                  ['name', 'Product Name'],
+                  ['description', 'Description'],
+                  ['mrp', 'MRP'],
+                  ['discount', 'Discount (%)'],
+                  ['price', 'Price'],
+                  ['unit', 'Unit (e.g., 1L, 500g)'],
+                  ['ingredients', 'Ingredients'],
+                  ['nutritionalInfo', 'Nutritional Info'],
+                  ['category', 'Category'],
+                ].map(([key, label]) => (
+                  <input
+                    key={key}
+                    type="text"
+                    placeholder={label}
+                    value={productData[key]}
+                    onChange={(e) => setProductData({ ...productData, [key]: e.target.value })}
+                    className="w-full border bg-white px-3 py-2 rounded-md"
+                    required
+                  />
+                ))}
+                  <label className="block">
+                   <span className="text-gray-700">Upload Images</span>
+                    <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) =>
+                    setProductData((prev) => {
+                     const newFiles = Array.from(e.target.files);
+                     const existingNames = new Set(prev.images.map((f) => f.name));
+                     const uniqueFiles = newFiles.filter((f) => !existingNames.has(f.name));
+
+                    return {
+                       ...prev,
+                       images: [...prev.images, ...uniqueFiles],
+                     };
+                     })
+                      }
+
+                    className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50"
+                    />
+                  </label>
+
+                  {/* Show selected filenames */}
+                  {productData.images.length > 0 && (
+                  <ul className="text-sm text-gray-600 mt-2 list-disc pl-5 max-h-24 overflow-y-auto">
+                  {productData.images.map((file, idx) => (
+                  <li key={idx}>{file.name}</li>))}
+                  </ul>
+                   )}
+
+               <div className="flex justify-end gap-3 mt-4">
                   <button
                     type="button"
                     onClick={() => setShowProductModal(false)}
@@ -318,51 +337,22 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Offer Modal */}
         {showOfferModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-md shadow-lg p-6 w-96 relative">
               <h3 className="text-xl font-semibold mb-4">Upload New Offer</h3>
               <form onSubmit={handleAddOffer} className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Offer Title"
-                  value={offerData.title}
-                  onChange={(e) => setOfferData({ ...offerData, title: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <textarea
-                  placeholder="Description"
-                  value={offerData.description}
-                  onChange={(e) => setOfferData({ ...offerData, description: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Image URL"
-                  value={offerData.imageUrl}
-                  onChange={(e) => setOfferData({ ...offerData, imageUrl: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Product Name"
-                  value={offerData.productName}
-                  onChange={(e) => setOfferData({ ...offerData, productName: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Discount (%)"
-                  value={offerData.discount}
-                  onChange={(e) => setOfferData({ ...offerData, discount: e.target.value })}
-                  className="w-full border bg-white px-3 py-2 rounded-md"
-                  required
-                />
+                {['title', 'description', 'imageUrl', 'productName', 'discount'].map((key) => (
+                  <input
+                    key={key}
+                    type="text"
+                    placeholder={key[0].toUpperCase() + key.slice(1)}
+                    value={offerData[key]}
+                    onChange={(e) => setOfferData({ ...offerData, [key]: e.target.value })}
+                    className="w-full border bg-white px-3 py-2 rounded-md"
+                    required
+                  />
+                ))}
                 <div className="flex justify-end gap-3 mt-4">
                   <button
                     type="button"
@@ -388,4 +378,6 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+
 

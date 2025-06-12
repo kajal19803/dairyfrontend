@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, MoreVertical, X, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -13,7 +13,8 @@ const Navbar = () => {
   const cartCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ✅ Check auth status and role
+  const dropdownRef = useRef();
+
   const checkAuth = () => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("userRole");
@@ -22,24 +23,29 @@ const Navbar = () => {
   };
 
   useEffect(() => {
-  const checkAuth = () => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("userRole");
-    setIsLoggedIn(!!token);
-    setUserRole(role);
-  };
+    checkAuth();
 
-  checkAuth();
+    window.addEventListener("userUpdated", checkAuth);
+    window.addEventListener("storage", checkAuth);
 
-  window.addEventListener("userUpdated", checkAuth);
-  window.addEventListener("storage", checkAuth);
+    return () => {
+      window.removeEventListener("userUpdated", checkAuth);
+      window.removeEventListener("storage", checkAuth);
+    };
+  }, []);
 
-  return () => {
-    window.removeEventListener("userUpdated", checkAuth);
-    window.removeEventListener("storage", checkAuth);
-  };
-}, []);
-
+  // ✅ Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -63,13 +69,11 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Logo */}
         <div className="text-2xl font-bold text-blue-600">
           <Link to="/" onClick={() => setMenuOpen(false)}>Uma Dairy</Link>
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4" ref={dropdownRef}>
           {/* Desktop Search */}
           <div className="hidden md:flex w-[250px]">
             <input
@@ -82,14 +86,14 @@ const Navbar = () => {
             />
           </div>
 
-          {/* Mobile Search Icon */}
+          {/* Mobile Search */}
           <div className="md:hidden">
             <button onClick={() => setShowSearch(!showSearch)} aria-label="Toggle search">
               <Search className="w-5 h-5 text-gray-700" />
             </button>
           </div>
 
-          {/* Cart (Only for User) */}
+          {/* Cart */}
           {userRole !== "admin" && (
             <div className="relative">
               <Link to="/cart" onClick={() => setMenuOpen(false)} aria-label="Cart">
@@ -191,4 +195,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

@@ -242,7 +242,11 @@ const Cart = () => {
       <h1 className="text-2xl font-bold mb-6 text-yellow-900">Your cart</h1>
       <div className="w-full max-w-3xl space-y-4">
         {cartItems.map((item) => (
-          <div key={item._id} className="flex items-center border rounded p-3 shadow-sm bg-white">
+          <div
+            key={item._id}
+            className="flex items-center border rounded p-3 shadow-sm bg-white cursor-pointer hover:shadow-md transition"
+            onClick={() => navigate(`/product/${item._id}`)}
+          >
             <img
               src={`${BACKEND_BASE_URL}${item.image}`}
               alt={item.name}
@@ -255,7 +259,10 @@ const Cart = () => {
               <p className="text-gray-600 text-sm">Quantity: {item.quantity || 1}</p>
               <div className="mt-2 flex items-center space-x-2">
                 <button
-                  onClick={() => updateQuantity(item._id, (item.quantity || 1) - 1)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(item._id, (item.quantity || 1) - 1);
+                  }}
                   disabled={(item.quantity || 1) <= 1}
                   className="px-2 py-1 bg-yellow-700 text-white rounded disabled:opacity-50"
                 >
@@ -263,7 +270,10 @@ const Cart = () => {
                 </button>
                 <span>{item.quantity || 1}</span>
                 <button
-                  onClick={() => updateQuantity(item._id, (item.quantity || 1) + 1)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(item._id, (item.quantity || 1) + 1);
+                  }}
                   className="px-2 py-1 bg-yellow-700 text-white rounded"
                 >
                   +
@@ -271,7 +281,8 @@ const Cart = () => {
               </div>
             </div>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (window.confirm(`Remove "${item.name}" from cart?`)) {
                   removeFromCart(item._id);
                 }
