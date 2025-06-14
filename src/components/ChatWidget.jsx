@@ -1,8 +1,8 @@
-// ✅ Final Updated ChatWidget.jsx with Order & Product Selection Before Raising Ticket
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import useUserStore from '../store/userStore';
+
+const API_BASE = import.meta.env.VITE_BACKEND_BASE_URL
 
 const ChatWidget = () => {
   const [messages, setMessages] = useState([]);
@@ -22,7 +22,7 @@ const ChatWidget = () => {
   const fetchRecentOrder = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/payment/recent', {
+      const res = await fetch(`${API_BASE}/api/payment/recent`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -47,7 +47,7 @@ const ChatWidget = () => {
     setMessages((prev) => [...prev, { sender: 'user', text: message }]);
     setIsBotTyping(true);
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -171,7 +171,7 @@ const ChatWidget = () => {
         if (ticketData.image) formData.append('images', ticketData.image);
         try {
           setIsBotTyping(true);
-          const res = await fetch('/api/tickets', {
+          const res = await fetch(`${API_BASE}/api/tickets`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
             body: formData,
