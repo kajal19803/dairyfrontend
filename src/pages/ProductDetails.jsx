@@ -119,7 +119,7 @@ const ProductDetail = () => {
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6 flex flex-col md:flex-row gap-8">
         
         <div className="w-full md:w-[40%]">
-          <Swiper pagination={{ clickable: true }} modules={[Pagination]} className="rounded-md">
+          < Swiper pagination={{ clickable: true }} modules={[Pagination]} className="rounded-md">
             {product.images?.map((img, idx) => (
               <SwiperSlide key={idx}>
                 <img
