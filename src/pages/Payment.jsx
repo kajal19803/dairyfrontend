@@ -23,44 +23,50 @@ const Payment = () => {
   }, [passedAddress, cartItems, totalPrice, navigate]);
 
   const handlePayment = async () => {
-    if (!name || !email || !phone) {
-      alert('Please fill all customer details');
-      return;
+  if (!name || !email || !phone) {
+    alert('Please fill all customer details');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount: totalPrice,
+        phone,
+        email,
+        name
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Server error: ${res.status} - ${errorText}`);
     }
 
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ amount: totalPrice,phone }),
-      });
+    const data = await res.json();
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Server error: ${res.status} - ${errorText}`);
-      }
-
-      const data = await res.json();
-
-      if (data.payment_link) {
-        clearCart();
-        alert("After completing payment, check 'My Orders' for the status.");
-        window.location.href = data.payment_link;
-      } else {
-        alert('Payment link creation failed');
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      alert('Payment request failed');
+    if (data.payment_link) {
+      clearCart();
+      alert("After completing payment, check 'My Orders' for the status.");
+      window.location.href = data.payment_link;
+    } else {
+      alert('Payment link creation failed');
     }
+  } catch (err) {
+    console.error('Payment error:', err);
+    alert('Payment request failed');
+  }
 
-    setLoading(false);
-  };
+  setLoading(false);
+};
+
 
   return (
     <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
