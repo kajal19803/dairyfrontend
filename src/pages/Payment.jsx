@@ -23,50 +23,58 @@ const Payment = () => {
   }, [passedAddress, cartItems, totalPrice, navigate]);
 
   const handlePayment = async () => {
-  if (!name || !email || !phone) {
-    alert('Please fill all customer details');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        amount: totalPrice,
-        phone,
-        email,
-        name
-      }),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Server error: ${res.status} - ${errorText}`);
+    if (!name || !email || !phone) {
+      alert('Please fill all customer details');
+      return;
     }
 
-    const data = await res.json();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: totalPrice,
+          phone,
+          email,
+          name
+        }),
+      });
 
-    if (data.payment_link) {
-      clearCart();
-      alert("After completing payment, check 'My Orders' for the status.");
-      window.location.href = data.payment_link;
-    } else {
-      alert('Payment link creation failed');
+      const data = await res.json();
+
+      if (!res.ok || !data.payment_link) {
+        alert('Payment session creation failed');
+        setLoading(false);
+        return;
+      }
+
+      const sessionId = data.payment_link.split('/').pop();
+
+      if (window.Cashfree) {
+        const cashfree = window.Cashfree({ mode: "production" });
+
+        clearCart();
+        alert("After completing payment, check 'My Orders' for status.");
+
+        cashfree.checkout({
+          paymentSessionId: sessionId
+        });
+      } else {
+        alert("Cashfree SDK not loaded");
+      }
+
+    } catch (err) {
+      console.error('Payment error:', err);
+      alert('Payment request failed');
     }
-  } catch (err) {
-    console.error('Payment error:', err);
-    alert('Payment request failed');
-  }
 
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
 
   return (
     <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
@@ -122,3 +130,4 @@ const Payment = () => {
 };
 
 export default Payment;
+
