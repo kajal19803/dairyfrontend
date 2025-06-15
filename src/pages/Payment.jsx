@@ -41,32 +41,22 @@ const Payment = () => {
           amount: totalPrice,
           phone,
           email,
-          name
+          name,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.payment_link) {
-        alert('Payment session creation failed');
+        alert('Payment link creation failed');
         setLoading(false);
         return;
       }
 
-      const sessionId = data.payment_link.split('/').pop();
+      clearCart();
+      alert("Redirecting to payment gateway...");
 
-      if (window.Cashfree) {
-        const cashfree = window.Cashfree({ mode: "production" });
-
-        clearCart();
-        alert("After completing payment, check 'My Orders' for status.");
-
-        cashfree.checkout({
-          paymentSessionId: sessionId
-        });
-      } else {
-        alert("Cashfree SDK not loaded");
-      }
+      window.location.href = data.payment_link; // ✅ Just redirect to Cashfree's payment page
 
     } catch (err) {
       console.error('Payment error:', err);
@@ -130,4 +120,5 @@ const Payment = () => {
 };
 
 export default Payment;
+
 
