@@ -86,10 +86,10 @@ const Payment = () => {
       
 
       cfInstance.checkout({
-        paymentSessionId: data.session_id,
-        checkoutContainer: '#cashfree-checkout',
-        redirect: false,
-      }).then((result) => {
+      paymentSessionId: data.session_id,
+      redirect: true,
+      returnUrl: `${window.location.origin}/paymentstatus?order_id=${orderId}`,
+     });then((result) => {
         if (result.error) {
           console.error('❌ Payment error:', result.error);
         } else if (result.paymentDetails) {
