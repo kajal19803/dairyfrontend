@@ -7,10 +7,10 @@ const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { cartItems, removeFromCart, updateQuantity, clearCart } = useCart();
-
+  const { cartItems, removeFromCart, updateQuantity } = useCart();
   const { user } = useUserStore();
-  const [selectedAddress, setSelectedAddress] = useState('');
+
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [selectedPhone, setSelectedPhone] = useState('');
   const [customAddress, setCustomAddress] = useState(false);
   const [customPhone, setCustomPhone] = useState(false);
@@ -73,7 +73,7 @@ const Cart = () => {
 
     try {
       setLoading(true);
-      const res = await fetch(`${BACKEND_BASE_URL}/api/orders/orders`, {
+      const res = await fetch(`${BACKEND_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,15 +84,15 @@ const Cart = () => {
 
       if (!res.ok) throw new Error('Order failed');
       const data = await res.json();
-      clearCart();
-      localStorage.setItem('latestOrderId', data._id);
+      localStorage.setItem('latestOrderId', data.order._id);
+
       navigate('/payment', {
         state: {
           address: addressData,
           phone: phoneData,
           cartItems,
           totalPrice,
-          orderId: data._id,
+          orderId: data.order._id,
         },
       });
     } catch (err) {
@@ -104,8 +104,14 @@ const Cart = () => {
   };
 
   useEffect(() => {
-    if (user?.address) setSelectedAddress(user.address);
-    if (user?.phoneNumber) setSelectedPhone(user.phoneNumber);
+    if (user?.address) {
+      if (Array.isArray(user.address)) setSelectedAddress(user.address[0]);
+      else setSelectedAddress(user.address);
+    }
+    if (user?.phoneNumber) {
+      if (Array.isArray(user.phoneNumber)) setSelectedPhone(user.phoneNumber[0]);
+      else setSelectedPhone(user.phoneNumber);
+    }
   }, [user]);
 
   if (cartItems.length === 0) {
@@ -122,173 +128,217 @@ const Cart = () => {
     );
   }
 
+  return (
+    <div className="w-screen min-h-screen flex flex-col items-center bg-gray-100 p-4">
+      <h1 className="text-2xl font-bold mb-6 text-yellow-900">Your cart</h1>
 
-return (
-  <div className="w-screen min-h-screen flex flex-col items-center bg-gray-100 p-4">
-    <h1 className="text-2xl font-bold mb-6 text-yellow-900">Your cart</h1>
-
-    {/* Cart Items */}
-    <div className="w-full max-w-3xl space-y-4">
-      {cartItems.map((item) => (
-        <div
-          key={item._id}
-          className="flex items-center border rounded p-3 shadow-sm bg-white cursor-pointer hover:shadow-md transition"
-          onClick={() => navigate(`/product/${item._id}`)}
-        >
-          <img
-            src={`${BACKEND_BASE_URL}${item.images[0]}`}
-            alt={item.name}
-            className="w-16 h-16 object-cover rounded"
-          />
-          <div className="flex-grow ml-4">
-            <h2 className="text-lg font-semibold text-blue-700">{item.name}</h2>
-            <p className="text-sm text-gray-700">{item.description}</p>
-            <p className="text-green-800 font-semibold mt-1">₹{item.price}</p>
-            <p className="text-gray-600 text-sm">Quantity: {item.quantity || 1}</p>
-            <div className="mt-2 flex items-center space-x-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateQuantity(item._id, (item.quantity || 1) - 1);
-                }}
-                disabled={(item.quantity || 1) <= 1}
-                className="px-2 py-1 bg-yellow-700 text-white rounded disabled:opacity-50"
-              >
-                -
-              </button>
-              <span>{item.quantity || 1}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateQuantity(item._id, (item.quantity || 1) + 1);
-                }}
-                className="px-2 py-1 bg-yellow-700 text-white rounded"
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm(`Remove "${item.name}" from cart?`)) {
-                removeFromCart(item._id);
-              }
-            }}
-            className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+      {/* Cart Items */}
+      <div className="w-full max-w-3xl space-y-4">
+        {cartItems.map((item) => (
+          <div
+            key={item._id}
+            className="flex items-center border rounded p-3 shadow-sm bg-white cursor-pointer hover:shadow-md transition"
+            onClick={() => navigate(`/product/${item._id}`)}
           >
-            Remove
-          </button>
-        </div>
-      ))}
-    </div>
+            <img
+              src={`${BACKEND_BASE_URL}${item.images[0]}`}
+              alt={item.name}
+              className="w-16 h-16 object-cover rounded"
+            />
+            <div className="flex-grow ml-4">
+              <h2 className="text-lg font-semibold text-blue-700">{item.name}</h2>
+              <p className="text-sm text-gray-700">{item.description}</p>
+              <p className="text-green-800 font-semibold mt-1">₹{item.price}</p>
+              <p className="text-gray-600 text-sm">Quantity: {item.quantity || 1}</p>
+              <div className="mt-2 flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(item._id, (item.quantity || 1) - 1);
+                  }}
+                  disabled={(item.quantity || 1) <= 1}
+                  className="px-2 py-1 bg-yellow-700 text-white rounded disabled:opacity-50"
+                >
+                  -
+                </button>
+                <span>{item.quantity || 1}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateQuantity(item._id, (item.quantity || 1) + 1);
+                  }}
+                  className="px-2 py-1 bg-yellow-700 text-white rounded"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm(`Remove "${item.name}" from cart?`)) {
+                  removeFromCart(item._id);
+                }
+              }}
+              className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
 
-    {/* Total Price */}
-    <div className="mt-6 w-full max-w-3xl text-right text-xl font-bold text-yellow-900">
-      Total price: ₹{totalPrice.toFixed(2)}
-    </div>
+      {/* Total Price */}
+      <div className="mt-6 w-full max-w-3xl text-right text-xl font-bold text-yellow-900">
+        Total price: ₹{totalPrice.toFixed(2)}
+      </div>
 
-    {/* Address & Phone Section */}
-    <div className="mt-6 w-full max-w-3xl bg-white p-4 rounded shadow space-y-4">
-      <h2 className="text-lg font-semibold text-yellow-800">Delivery Address</h2>
+      { /* Address and Phone Section */}
+<div className="mt-6 w-full max-w-3xl bg-white p-4 rounded shadow space-y-4">
+  <h2 className="text-lg font-semibold text-yellow-800">Delivery Address</h2>
 
-      {!customAddress && user?.address ? (
-        <div className="flex justify-between items-center border p-3 rounded bg-gray-50">
-          <p className="text-gray-700">
-            {user.address.fullName}, {user.address.street}, {user.address.city}, {user.address.state}, {user.address.zip}
-          </p>
+  {!customAddress ? (
+    <>
+      {Array.isArray(user?.address) && user.address.length > 0 ? (
+        <div className="flex justify-between items-center">
+          <select
+            value={JSON.stringify(selectedAddress)}
+            onChange={(e) => setSelectedAddress(JSON.parse(e.target.value))}
+            className="w-full border p-2 rounded bg-gray-50 text-gray-800"
+          >
+            {user.address.map((addr, index) => (
+              <option key={index} value={JSON.stringify(addr)}>
+                {addr.fullName}, {addr.street}, {addr.city}, {addr.state}, {addr.zip}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => setCustomAddress(true)}
-            className="text-sm text-blue-600 underline"
+            className="text-sm text-blue-600 bg-white underline ml-3"
           >
-            Use different address
+            Add new address
           </button>
         </div>
       ) : (
-        <>
-          <input
-            type="text"
-            placeholder="Full Name"
-            className="w-full border p-2 rounded"
-            onChange={(e) => setFormAddress({ ...formAddress, fullName: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Street"
-            className="w-full border p-2 rounded"
-            onChange={(e) => setFormAddress({ ...formAddress, street: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="City"
-            className="w-full border p-2 rounded"
-            onChange={(e) => setFormAddress({ ...formAddress, city: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="State"
-            className="w-full border p-2 rounded"
-            onChange={(e) => setFormAddress({ ...formAddress, state: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="ZIP Code"
-            className="w-full border p-2 rounded"
-            onChange={(e) => setFormAddress({ ...formAddress, zip: e.target.value })}
-          />
-          <button
-            onClick={() => setCustomAddress(false)}
-            className="text-sm text-blue-600 underline"
-          >
-            Use saved address
-          </button>
-        </>
+        <p className="text-red-500">No saved address found</p>
       )}
+    </>
+  ) : (
+    <>
+      <input
+        type="text"
+        placeholder="Full Name"
+        className="w-full border bg-white p-2 rounded"
+        onChange={(e) => setFormAddress({ ...formAddress, fullName: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="Street"
+        className="w-full border bg-white p-2 rounded"
+        onChange={(e) => setFormAddress({ ...formAddress, street: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="City"
+        className="w-full border bg-white p-2 rounded"
+        onChange={(e) => setFormAddress({ ...formAddress, city: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="State"
+        className="w-full border bg-white p-2 rounded"
+        onChange={(e) => setFormAddress({ ...formAddress, state: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="ZIP Code"
+        className="w-full border bg-white p-2 rounded"
+        onChange={(e) => setFormAddress({ ...formAddress, zip: e.target.value })}
+      />
+      <button
+        onClick={() => {
+          if (user?.address) {
+            setSelectedAddress(Array.isArray(user.address) ? user.address[0] : user.address);
+            setCustomAddress(false);
+          }
+        }}
+        className="text-sm text-blue-600 bg-white underline"
+      >
+        Use saved address
+      </button>
+    </>
+  )}
 
-      <h2 className="text-lg font-semibold text-yellow-800 mt-4">Phone Number</h2>
+  <h2 className="text-lg font-semibold text-yellow-800 mt-4">Phone Number</h2>
 
-      {!customPhone && user?.phoneNumber ? (
-        <div className="flex justify-between items-center border p-3 rounded bg-gray-50">
-          <p className="text-gray-700">{user.phoneNumber}</p>
+  {!customPhone ? (
+    <>
+      {Array.isArray(user?.phoneNumber) && user.phoneNumber.length > 0 ? (
+        <div className="flex justify-between items-center">
+          <select
+            value={selectedPhone}
+            onChange={(e) => setSelectedPhone(e.target.value)}
+            className="w-full border p-2 rounded bg-gray-50 text-gray-800"
+          >
+            {user.phoneNumber.map((num, index) => (
+              <option key={index} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => setCustomPhone(true)}
-            className="text-sm text-blue-600 underline"
+            className="text-sm text-blue-600  bg-white underline ml-3"
           >
             Use different number
           </button>
         </div>
       ) : (
-        <>
-          <input
-            type="tel"
-            placeholder="Enter Phone Number"
-            className="w-full border p-2 rounded"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <button
-            onClick={() => setCustomPhone(false)}
-            className="text-sm text-blue-600 underline"
-          >
-            Use saved number
-          </button>
-        </>
+        <p className="text-red-500">No saved phone number found</p>
       )}
-    </div>
-
-    {/* Place Order Button */}
-    <div className="mt-6 w-full max-w-3xl text-right">
+    </>
+  ) : (
+    <>
+      <input
+        type="tel"
+        placeholder="Enter Phone Number"
+        className="w-full border bg-white p-2 rounded"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
       <button
-        onClick={handlePlaceOrder}
-        className="px-6 py-2 bg-green-700 text-white rounded hover:bg-green-800"
-        disabled={loading}
+        onClick={() => {
+          if (user?.phoneNumber) {
+            setSelectedPhone(
+              Array.isArray(user.phoneNumber) ? user.phoneNumber[0] : user.phoneNumber
+            );
+            setCustomPhone(false);
+          }
+        }}
+        className="text-sm text-blue-600 bg-white underline"
       >
-        {loading ? 'Placing Order...' : 'Place Order'}
+        Use saved number
       </button>
+    </>
+  )}
+</div>
+
+
+      {/* Place Order Button */}
+      <div className="mt-6 w-full max-w-3xl text-right">
+        <button
+          onClick={handlePlaceOrder}
+          className="px-6 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+          disabled={loading}
+        >
+          {loading ? 'Placing Order...' : 'Place Order'}
+        </button>
+      </div>
     </div>
-  </div>
-);
-}
+  );
+};
 
 export default Cart;
+
+
 

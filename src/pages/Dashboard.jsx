@@ -245,7 +245,7 @@ const Dashboard = () => {
 
             <p className="text-sm text-gray-500 mt-1">Order ID: {order._id}</p>
 
-            {order.items.map((item, idx) => (
+             { order.items.map((item, idx) => (
               <div key={idx} className="flex items-start gap-4 mt-3">
                 <img
                   src={
@@ -260,12 +260,24 @@ const Dashboard = () => {
                   onError={(e) => { e.target.src = '/placeholder.jpg'; }}
                 />
                 <div>
-                  <h3 className="font-bold">{item.name}</h3>
+                   <h3 className="font-bold">{item.name}</h3>
                   <p className="text-sm text-gray-700">Quantity: {item.quantity}</p>
                   <p className="text-sm text-gray-700">Price: ₹{item.price}</p>
+  
+                 <p><strong>🏠 Delivery Address:</strong></p>
+                   {typeof item.address === 'object' ? (
+                   <p className="ml-2 text-sm text-gray-700">
+                     {item.address.fullName}, {item.address.street}, {item.address.city}, {item.address.state} - {item.address.zip}
+                   </p>
+                  ) : (
+               <p className="ml-2 text-sm text-gray-700">{item.address}</p>
+                   )}
+
+                 <p className="text-sm text-gray-700">Phone: {item.phone}</p>
                 </div>
+
               </div>
-            ))}
+           ))}
 
             <Link
               to={`/order/${order._id}`}

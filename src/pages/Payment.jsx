@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { load } from '@cashfreepayments/cashfree-js';
+import useUserStore from '../store/userStore';
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
@@ -8,101 +10,155 @@ const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { clearCart } = useCart();
+  const { user } = useUserStore(); // Zustand user store
 
-  const { address: passedAddress, cartItems, totalPrice } = location.state || {};
+  const {
+  cartItems,
+  totalPrice,
+  orderId,
+  address,
+  phone,
+} = location.state || {};
 
-  const [name, setName] = useState(passedAddress?.fullName || '');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState(passedAddress?.phone || '');
+  const [cfInstance, setCfInstance] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // ✅ Redirect to cart if missing data
   useEffect(() => {
-    if (!passedAddress || !cartItems || totalPrice === undefined) {
+    if (!user || !cartItems || totalPrice === undefined || !orderId) {
       navigate('/cart');
     }
-  }, [passedAddress, cartItems, totalPrice, navigate]);
+  }, [user, cartItems, totalPrice, orderId, navigate]);
+
+  // ✅ Load Cashfree SDK
+  useEffect(() => {
+    const initCashfree = async () => {
+      try {
+        const cf = await load({ mode: 'production' });
+        setCfInstance(cf);
+        console.log('✅ Cashfree SDK loaded');
+      } catch (err) {
+        console.error('❌ Failed to load Cashfree SDK', err);
+      }
+    };
+    initCashfree();
+  }, []);
 
   const handlePayment = async () => {
-    if (!name || !email || !phone) {
-      alert('Please fill all customer details');
+    if (!user?.name || !user?.email) {
+      alert('User info missing. Please login again.');
+      return;
+    }
+
+    if (!cfInstance || typeof cfInstance.checkout !== 'function') {
+      alert('Cashfree SDK not ready yet. Please wait...');
       return;
     }
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+
       const res = await fetch(`${BACKEND_BASE_URL}/api/orders/payment/create-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           amount: totalPrice,
-          phone,
-          email,
-          name,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          orderId,
         }),
       });
 
       const data = await res.json();
+      console.log('✅ Cashfree backend response:', data);
 
-      if (!res.ok || !data.payment_link) {
-        alert('Payment link creation failed');
+      if (!res.ok || !data.session_id) {
+        alert('Failed to create payment session');
         setLoading(false);
         return;
       }
 
-      clearCart();
-      alert("Redirecting to payment gateway...");
+      
 
-      window.location.href = data.payment_link; // ✅ Just redirect to Cashfree's payment page
-
+      cfInstance.checkout({
+        paymentSessionId: data.session_id,
+        checkoutContainer: '#cashfree-checkout',
+        redirect: false,
+      }).then((result) => {
+        if (result.error) {
+          console.error('❌ Payment error:', result.error);
+        } else if (result.paymentDetails) {
+          console.log('✅ Payment success:', result.paymentDetails.paymentMessage);
+          clearCart(); 
+        }
+      });
     } catch (err) {
-      console.error('Payment error:', err);
-      alert('Payment request failed');
+      console.error('❌ Payment error:', err);
+      alert('Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+    <div className="w-screen min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
       <h2 className="text-2xl font-bold mb-4 text-yellow-900">Payment Page</h2>
 
+      {/* ✅ Shipping/User Info */}
       <div className="mb-6 bg-white p-4 rounded shadow w-full max-w-md">
-        <h3 className="font-semibold mb-2 text-gray-900">Customer Details:</h3>
-
-        <label className="block mb-1 text-gray-700">Name:</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full mb-3 p-2 border border-gray-300 rounded"
-          placeholder="Enter your name"
-          required
-        />
-
-        <label className="block mb-1 text-gray-700">Email:</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-3 p-2 border border-gray-300 rounded"
-          placeholder="Enter your email"
-          required
-        />
-
-        <label className="block mb-1 text-gray-700">Phone:</label>
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full mb-3 p-2 border border-gray-300 rounded"
-          placeholder="Enter your phone"
-          required
-        />
+        <p className="text-sm text-gray-700"><strong>Order ID:</strong> {orderId}</p>
+        <div>
+           <p className="font-semibold text-yellow-800 mb-2">Items:</p>
+          <div className="border rounded">
+            {cartItems.map((item, i) => (
+              <div
+                key={item._id}
+                className="flex justify-between items-center border-b p-3 text-sm"
+              >
+              <div className="flex items-center space-x-3">
+                 <img src={`${BACKEND_BASE_URL}${item.images[0]}`} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                  <div>
+                   <p className="font-semibold text-blue-700">{item.name}</p>
+                   <p className="text-gray-500">Product ID: {item._id}</p>
+                 </div>
+              </div>
+               <div className="text-right">
+                <p>Qty: {item.quantity}</p>
+                 <p>Price: ₹{item.price}</p>
+                <p className="font-semibold text-green-700">Total: ₹{Number(item.price) * item.quantity}</p>
+               </div>
+          </div>
+        ))}
       </div>
+    </div>
+        <h3 className="font-semibold mb-2 text-gray-900">Delivery Details</h3>
+           <p><strong>Name:</strong> {user?.name}</p>
+           <p><strong>Email:</strong> {user?.email}</p>
+            <p><strong>Phone:</strong> {phone}</p>
+  
+          {/* 🏠 Address Display */}
+           <p><strong>🏠Address:</strong></p>
+          {typeof address === 'object' ? (
+          <p className="ml-2 text-sm text-gray-700">
+            {address.street}, {address.city}, {address.state} - {address.pincode}
+         </p>
+         ) : (
+          <p className="ml-2 text-sm text-gray-700">{address}</p>
+           )}
+
+          <button
+             className="text-blue-600 bg-white underline mt-2"
+             onClick={() => navigate('/cart')}
+           >
+            ✏️ Edit Details
+         </button>
+        </div>
+
 
       <div className="mb-6 text-xl font-semibold text-yellow-900">
         Total Amount to Pay: ₹{totalPrice?.toFixed(2)}
@@ -110,15 +166,20 @@ const Payment = () => {
 
       <button
         onClick={handlePayment}
-        disabled={loading}
+        disabled={loading || !cfInstance}
         className="bg-yellow-800 text-white px-6 py-3 rounded hover:bg-yellow-700 disabled:opacity-50"
       >
         {loading ? 'Processing...' : 'Pay Now'}
       </button>
+
+      {/* 🔽 Cashfree will mount its UI here */}
+      <div
+        id="cashfree-checkout"
+        className="w-full max-w-md mt-6"
+        style={{ minHeight: '700px' }}
+      />
     </div>
   );
 };
 
 export default Payment;
-
-
