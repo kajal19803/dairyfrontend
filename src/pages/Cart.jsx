@@ -84,7 +84,7 @@ const Cart = () => {
 
       if (!res.ok) throw new Error('Order failed');
       const data = await res.json();
-      localStorage.setItem('latestOrderId', data.order._id);
+      localStorage.setItem('latestOrderId', data.order.orderId);
 
       navigate('/payment', {
         state: {
@@ -92,7 +92,7 @@ const Cart = () => {
           phone: phoneData,
           cartItems,
           totalPrice,
-          orderId: data.order._id,
+          orderId: data.order.orderId, 
         },
       });
     } catch (err) {

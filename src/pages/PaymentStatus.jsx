@@ -19,7 +19,7 @@ function PaymentStatus() {
 
     if (order_status === 'PAID' || order_status === 'SUCCESS') {
       clearCart();
-      // After some delay or immediately navigate user to orders page
+      
       setTimeout(() => {
         navigate('/myorders');
       }, 3000);
