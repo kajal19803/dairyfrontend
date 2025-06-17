@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ShoppingCart, MoreVertical, X, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import useUserStore from '../store/userStore';
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,16 +47,22 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+  const { clearUser } = useUserStore();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userRole");
-    setIsLoggedIn(false);
-    setUserRole(null);
-    navigate("/login");
-    setMenuOpen(false);
-  };
+  // ✅ Remove from localStorage
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("userRole");
+
+  // ✅ Clear Zustand store
+  clearUser(); // This will also remove from persist
+
+  setIsLoggedIn(false);
+  setUserRole(null);
+  navigate("/login");
+  setMenuOpen(false);
+};
 
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter" && searchTerm.trim()) {

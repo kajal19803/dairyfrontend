@@ -57,19 +57,20 @@ const Cart = () => {
       return alert('Please enter phone number');
     }
     if (customPhone) phoneData = phone;
+    
 
-    const orderPayload = {
-      userId: user._id,
-      items: cartItems.map((item) => ({
-        productId: item._id,
-        quantity: item.quantity,
-        price: getPriceNumber(item.price),
+
+   const orderPayload = {
+      items: cartItems.map(item => ({
+      _id: item._id,
+      quantity: item.quantity,
       })),
       totalPrice,
       address: addressData,
       phone: phoneData,
-      status: 'Pending',
-    };
+   };
+
+
 
     try {
       setLoading(true);
@@ -81,18 +82,15 @@ const Cart = () => {
         },
         body: JSON.stringify(orderPayload),
       });
-
+      
+      console.log('📦 Response object:', res);
       if (!res.ok) throw new Error('Order failed');
       const data = await res.json();
       localStorage.setItem('latestOrderId', data.order.orderId);
-
+      console.log('📦 Parsed data:', data);
       navigate('/payment', {
         state: {
-          address: addressData,
-          phone: phoneData,
-          cartItems,
-          totalPrice,
-          orderId: data.order.orderId, 
+           order: data.order,
         },
       });
     } catch (err) {

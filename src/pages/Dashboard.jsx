@@ -26,7 +26,7 @@ const Dashboard = () => {
     const fetchUserData = async () => {
       try {
         const [userRes, wishlistRes] = await Promise.all([
-          fetch(`${API_URL}/api/user`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch (`${API_URL}/api/user`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${API_URL}/api/auth/wishlist`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
 
@@ -243,8 +243,18 @@ const Dashboard = () => {
               </span>
             </div>
 
-            <p className="text-sm text-gray-500 mt-1">Order ID: {order._id}</p>
+            <p className="text-sm text-gray-500 mt-1">Order ID: {order.orderId}</p>
+               <p className="text-sm text-gray-700">Payment:{order.paymentMethod}</p>
+               <p><strong>🏠 Delivery Address:</strong></p>
+                   {typeof order.address === 'object' ? (
+                   <p className="ml-2 text-sm text-gray-700">
+                     {order.address.fullName}, {order.address.street}, {order.address.city}, {order.address.state} - {order.address.zip}
+                   </p>
+                  ) : (
+               <p className="ml-2 text-sm text-gray-700">{order.address}</p>
+                   )}
 
+                 <p className="text-sm text-gray-700">Phone: {order.phone}</p>
              { order.items.map((item, idx) => (
               <div key={idx} className="flex items-start gap-4 mt-3">
                 <img
@@ -263,20 +273,15 @@ const Dashboard = () => {
                    <h3 className="font-bold">{item.name}</h3>
                   <p className="text-sm text-gray-700">Quantity: {item.quantity}</p>
                   <p className="text-sm text-gray-700">Price: ₹{item.price}</p>
+                  
   
-                 <p><strong>🏠 Delivery Address:</strong></p>
-                   {typeof item.address === 'object' ? (
-                   <p className="ml-2 text-sm text-gray-700">
-                     {item.address.fullName}, {item.address.street}, {item.address.city}, {item.address.state} - {item.address.zip}
-                   </p>
-                  ) : (
-               <p className="ml-2 text-sm text-gray-700">{item.address}</p>
-                   )}
-
-                 <p className="text-sm text-gray-700">Phone: {item.phone}</p>
+                 
                 </div>
-
-              </div>
+                
+            </div>
+            
+            
+              
            ))}
 
             <Link
@@ -285,6 +290,15 @@ const Dashboard = () => {
             >
               View Details
             </Link>
+            {order.status === 'pending' && (
+                    <button
+                   onClick={() => navigate('/payment', { state: { order } })}
+                  className="mt-2 bg-indigo-600 text-white text-sm px-3 py-1 rounded hover:bg-indigo-700"
+                   >
+                 Complete Payment
+                   </button>
+                    ) }
+
           </div>
         ))}
       </div>

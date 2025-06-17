@@ -263,7 +263,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setShowPass(prev => !prev)}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600"
+              className="absolute right-2 bg-transparent border-none outline-none top-[65%] transform -translate-y-1/2 text-gray-600 focus:outline-none focus:ring-0"
               tabIndex={-1}
               aria-label={showPass ? 'Hide password' : 'Show password'}
             >
@@ -286,11 +286,11 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowConfirmPass(prev => !prev)}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600"
+                className="absolute right-2 top-[65%] bg-transparent border-none outline-none transform -translate-y-1/2 text-gray-600 focus:outline-none focus:ring-0"
                 tabIndex={-1}
                 aria-label={showConfirmPass ? 'Hide confirm password' : 'Show confirm password'}
               >
-                {showConfirmPass ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                {showConfirmPass ? <EyeSlashIcon className="h-4 bg-white w-5" /> : <EyeIcon className="h-5 w-5" />}
               </button>
               {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
             </div>
@@ -306,19 +306,19 @@ const Login = () => {
         </form>
 
         {isLogin && (
-          <div className="text-right mt-2">
-            <button
-              onClick={() => setShowForgot(true)}
-              className="text-green-600 hover:underline text-sm"
-            >
-              Forgot Password?
+          <div className="flex justify-end mt-2">
+             <button
+             onClick={() => setShowForgot(true)}
+             className="text-green-600 bg-transparent border-none outline-none hover:underline focus:outline-none focus:ring-0"
+             >
+             Forgot Password?
             </button>
           </div>
         )}
 
         <p className="mt-4 text-center text-gray-600 text-sm">
           {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button onClick={toggleForm} className="text-green-600 hover:underline text-sm">
+          <button onClick={toggleForm} className="text-green-600 focus:outline-none focus:ring-0 hover:underline bg-transparent border-none outline-none text-sm">
             {isLogin ? 'Register here' : 'Login here'}
           </button>
         </p>
@@ -369,13 +369,13 @@ const Login = () => {
                   setFpStep(1);
                   setFpData({ email: '', otp: '', newPassword: '' });
                 }}
-                className="text-green-600 hover:underline text-sm"
+                className="text-green-600 bg-transparent border-none outline-none hover:underline text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleFp}
-                className="text-green-600 hover:underline text-sm"
+                className="text-green-600 bg-transparent border-none outline-none hover:underline text-sm"
               >
                 {fpStep === 1 ? 'Send OTP' : fpStep === 2 ? 'Verify OTP' : 'Reset Password'}
               </button>
